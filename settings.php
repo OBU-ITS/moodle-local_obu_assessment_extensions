@@ -23,3 +23,9 @@
  */
 
 defined('MOODLE_INTERNAL') || die;
+
+if ($hassiteconfig) {
+    $settings = new admin_settingpage(get_string('pluginname', 'local_obu_assessment_extensions'), get_string('plugintitle', 'local_obu_assessment_extensions'));
+    $ADMIN->add('localplugins', $settings);
+    $settings->add(new admin_setting_configcheckbox('local_obu_assessment_extensions/enable', get_string('enable', 'local_obu_assessment_extensions'), get_string('enabledescription', 'local_obu_assessment_extensions'), 0));
+}

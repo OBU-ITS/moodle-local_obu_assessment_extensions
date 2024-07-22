@@ -26,3 +26,5 @@ $string['privacy:metadata'] = 'The OBU Assessment Extensions plugin does not sto
 
 $string['pluginname'] = 'obu_assessment_extensions';
 $string['plugintitle'] = 'OBU Assessment Extensions';
+$string['enable'] = 'Is enabled?';
+$string['enabledescription'] = 'Toggle to enable the plugin or disable the plugin in Moodle.';
