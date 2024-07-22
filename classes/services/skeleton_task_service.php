@@ -24,5 +24,4 @@ namespace local_obu_assessment_extensions\services;
  */
 
 class skeleton_task_service {
-    
 }
