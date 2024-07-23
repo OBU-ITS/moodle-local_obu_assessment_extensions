@@ -32,7 +32,7 @@ class local_obu_assessment_extensions_external extends external_api {
                 'assessmentIdNumber' => new external_value(PARAM_TEXT, 'Assessment ID number'),
                 'studentIdNumber' => new external_value(PARAM_TEXT, 'Student ID number'),
                 'extensionDays' => new external_value(PARAM_TEXT, 'Number of days in this extension award'),
-                'processedInd' => new external_value(PARAM_BOOL, 'Processed indicator'),
+                'processedInd' => new external_value(PARAM_INT, 'Processed indicator', false, 0),
             )
         );
     }
