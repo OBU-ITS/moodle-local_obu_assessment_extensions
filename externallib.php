@@ -32,7 +32,6 @@ class local_obu_assessment_extensions_external extends external_api {
                 'assessmentIdNumber' => new external_value(PARAM_TEXT, 'Assessment ID number'),
                 'studentIdNumber' => new external_value(PARAM_TEXT, 'Student ID number'),
                 'extensionDays' => new external_value(PARAM_TEXT, 'Number of days in this extension award'),
-                'processedInd' => new external_value(PARAM_INT, 'Processed indicator', false, 0),
             )
         );
     }
@@ -45,7 +44,7 @@ class local_obu_assessment_extensions_external extends external_api {
         );
     }
 
-    public static function award_exceptional_circumstance($assessmentIdNumber, $studentIdNumber, $extensionDays, $processedInd) {
+    public static function award_exceptional_circumstance($assessmentIdNumber, $studentIdNumber, $extensionDays) {
         global $DB;
 
         // Context validation
@@ -57,7 +56,6 @@ class local_obu_assessment_extensions_external extends external_api {
                 'assessmentIdNumber' => $assessmentIdNumber,
                 'studentIdNumber' => $studentIdNumber,
                 'extensionDays' => $extensionDays,
-                'processedInd' => $processedInd,
             )
         );
 
