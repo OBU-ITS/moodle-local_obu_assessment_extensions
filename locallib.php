@@ -24,3 +24,26 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
+
+/**
+ * Adds a known exceptional circumstance record to the table
+ *
+ * @param string $studentIdNumber   The student id number
+ * @param string $extensionDays The number of days' extension provided to the student
+ * @param string $assessmentIdNumber The assessment id number (Optional)
+ * @return bool True if user added successfully or the user is already a
+ * member of the group, false otherwise.
+ */
+function local_obu_ass_ext_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+
+    $extension = new stdClass();
+    $extension->student_id   = $studentIdNumber;
+    $extension->assessment_id    = $assessmentIdNumber;
+    $extension->extension_amount = $extensionDays;
+    $extension->is_processed = 0;
+    $extension->timestamp = time();
+
+    $DB->insert_record('local_obu_assessment_ext', $extension);
+
+    return true;
+}

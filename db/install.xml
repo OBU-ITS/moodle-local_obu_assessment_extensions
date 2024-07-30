@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/obu_assessment_extensions/db" VERSION="2024071701" COMMENT="XMLDB file for Moodle local/obu_assessment_extensions"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+    <TABLES>
+        <TABLE NAME="local_obu_assessment_ext" COMMENT="OBU Known exceptional circumstances">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="student_id" TYPE="text" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Student Number"/>
+                <FIELD NAME="assessment_id" TYPE="text" LENGTH="100" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Assessment ID"/>
+                <FIELD NAME="extension_amount" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Days. '0' for temporary"/>
+                <FIELD NAME="is_processed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Extension processed? Default '0'"/>
+                <FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Record created"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <!-- Single-column index on isProcessed for efficient retrieval of processed/unprocessed records -->
+                <INDEX NAME="is_processed_index" UNIQUE="false" FIELDS="is_processed" COMMENT="Index for processed/unprocessed records"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>

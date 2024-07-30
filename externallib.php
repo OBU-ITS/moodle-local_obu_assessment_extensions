@@ -26,17 +26,17 @@ require_once($CFG->libdir . "/externallib.php");
 
 class local_obu_assessment_extensions_external extends external_api {
 
-    public static function api_parameters() {
+    public static function award_exceptional_circumstance_parameters() {
         return new external_function_parameters(
             array(
-                'assessmentIdNumber' => new external_value(PARAM_TEXT, 'Assessment ID number'),
-                'studentIdNumber' => new external_value(PARAM_TEXT, 'Student ID number'),
-                'extensionDays' => new external_value(PARAM_TEXT, 'Number of days in this extension award'),
+                'assessmentIdNumber' => new external_value(PARAM_TEXT, 'Assessment ID number', false),
+                'studentIdNumber' => new external_value(PARAM_TEXT, 'Student ID number', true),
+                'extensionDays' => new external_value(PARAM_TEXT, 'Number of days in this extension award', true),
             )
         );
     }
 
-    public static function api_returns() {
+    public static function award_exceptional_circumstance_returns() {
         return new external_single_structure(
             array(
                 'result' => new external_value(PARAM_INT, 'Result')
@@ -44,7 +44,7 @@ class local_obu_assessment_extensions_external extends external_api {
         );
     }
 
-    public static function award_exceptional_circumstance($assessmentIdNumber, $studentIdNumber, $extensionDays) {
+    public static function award_exceptional_circumstance($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
         global $DB;
 
         // Context validation
@@ -53,31 +53,19 @@ class local_obu_assessment_extensions_external extends external_api {
         // Parameter validation
         self::validate_parameters(
             self::add_session_parameters(), array(
-                'assessmentIdNumber' => $assessmentIdNumber,
                 'studentIdNumber' => $studentIdNumber,
                 'extensionDays' => $extensionDays,
+                'assessmentIdNumber' => $assessmentIdNumber,
             )
         );
 
-        if (strlen($assessmentIdNumber) == 0) {
-            return array('result' => -1);
-        }
-
-        //TODO: Validate assessmentIdNumber here when you find out where we are storing them
-//        if (!($courseRecord = $DB->get_record('course', array('idnumber' => $courseIdNumber)))) {
-//            return array('result' => -2);
-//        }
-
-        if (!($userRecord = $DB->get_record('user', array('username' => $studentIdNumber)))) {
+        if (!($DB->get_record('user', array('username' => $studentIdNumber)))) {
             return array('result' => -3);
         }
 
-        //TODO: Modify this bit to do the actual thingy
-//        $group = local_obu_timetable_usergroups_get_group($courseRecord->id, $courseRecord->idnumber, $courseRecord->shortname, $instanceName, $groupName);
-//        if(groups_add_member($group->id, $userRecord->id, 'local_obu_timetable_usergroups'))
-//        {
-//            return array('result' => 1);
-//        }
+        if(local_obu_ass_ext_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber)) {
+            return array('result' => 1);
+        }
 
         return array('result' => -9);
     }
