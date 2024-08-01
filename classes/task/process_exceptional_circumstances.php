@@ -1,5 +1,5 @@
 <?php
-namespace local_obu_assessment_extensions\handlers;
+namespace local_obu_assessment_extensions\task;
 
 // This file is part of Moodle - http://moodle.org/
 //
@@ -23,22 +23,16 @@ namespace local_obu_assessment_extensions\handlers;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use local_obu_assessment_extensions\services\skeleton_task_service;
-use progress_trace;
+class local_obu_process_exceptional_circumstances extends \core\task\scheduled_task{
 
-class skeleton_task_handler
-{
-    private skeleton_task_service $skeletonTaskService;
-    private progress_trace $trace;
-
-    public function __construct($trace)
-    {
-        $this->skeletonTaskService = skeleton_task_service::getInstance();
-
-        $this->trace = $trace;
+    public function get_name() : string {
+        return "Skeleton Task";
     }
 
-    public function handleSkeleton() {
-        //TODO: Call functions from service here
+    public function execute() {
+        $trace = new \text_progress_trace();
+
+        $handler = new \local_obu_assessment_extensions\handlers\local_obu_process_exceptional_circumstances_handler($trace);
+        $handler->handle_process_exceptional_circumstances();
     }
 }

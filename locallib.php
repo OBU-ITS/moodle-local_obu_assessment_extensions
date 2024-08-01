@@ -47,3 +47,42 @@ function local_obu_ass_ext_store_known_exceptional_circumstances($studentIdNumbe
 
     return true;
 }
+
+//TODO:: Same function as above for cosector table in doc, dont worry about variables you dont have yet, need to come from Jock
+function local_obu_submit_due_date_change($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+
+    $dueDateChange = new stdClass();
+    $dueDateChange->user   = $studentIdNumber;
+    $dueDateChange->course    = '';
+    $dueDateChange->assessment = '';
+    $dueDateChange->date_time_value = '';
+    $dueDateChange->timelimit_value = '';
+    $dueDateChange->type = '';
+    $dueDateChange->reason_code = '';
+    $dueDateChange->reason_desc = '';
+    $dueDateChange->action = '';
+    $dueDateChange->timestamp = time();
+
+    $DB->insert_record('module_extensions_queue_table', $dueDateChange);
+
+    return true;
+}
+
+function local_obu_get_assessment_groups_by_user($user): array {
+    //TODO:: find out user's moodle courses and iterate over them to get user groups and find out which groups are for assessments and return those
+    return groups_get_user_groups('', $user);
+}
+
+function local_obu_get_assessments_by_assessment_group($assessmentGroup) {
+    //TODO:: get assessments out of the assessment group
+    return;
+}
+
+function local_obu_get_assessment_groups_by_assessment($assessment) {
+    //TODO:: get assessment groups using an assessment object/id
+    return;
+}
+
+function local_obu_recalculate_due_for_assessment($user, $assessment, $extensionAmount) {
+    //TODO:: recalculate due date using params
+}

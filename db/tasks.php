@@ -26,7 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $tasks = [
     [
-        'classname' => 'local_obu_assessment_extensions\task\skeleton_task',
+        'classname' => 'local_obu_assessment_extensions\task\processexceptionalcircumstances',
         'blocking' => 0,
         'minute' => '45',
         'hour' => '17',
