@@ -30,18 +30,19 @@ use mod_hvp\event;
 defined('MOODLE_INTERNAL') || die();
 
 class coursework_deadline_changed_observer {
-    public static function coursework_deadline_changed(\core\event\course_module_updated $event) {
+    public static function coursework_deadline_changed(mod_coursework\event\coursework_deadline_changed $event) {
         global $DB;
 
         $eventData = $event->get_data();
         $cmid = $eventData['objectid'];
         $context = \context_module::instance($cmid);
 
-        if(strtok($context->get_context_name(), ':')  != 'Assignment') {
+        if(strtok($context->get_context_name(), ':')  != 'coursework') {
             return;
         }
-        //TODO: process with an ad hoc task passing in assessment id
-    }
 
-    //TODO: ADHOC TASK needs to decode access restrictions and loop over groups -> loop over users in groups and recalc due dates for the assessments. Ask for more info
+        $task = new \local_obu_assessment_extensions\task\adhoc_process_exceptional_circumstance();
+        $task->set_custom_data(['assessmentId' => $cmid]);
+        \core\task\manager::queue_adhoc_task($task);
+    }
 }

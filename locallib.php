@@ -73,6 +73,12 @@ function local_obu_get_assessment_groups_by_user($user): array {
     return groups_get_user_groups('', $user);
 }
 
+//TODO :: get users by assesment group
+function local_obu_get_users_by_assessment_group($assessmentGroup): array {
+    $users = array();
+    return $users;
+}
+
 function local_obu_get_assessments_by_assessment_group($assessmentGroup) {
     //TODO:: get assessments out of the assessment group
     return;
@@ -83,6 +89,6 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
     return;
 }
 
-function local_obu_recalculate_due_for_assessment($user, $assessment, $extensionAmount) {
-    //TODO:: recalculate due date using params
+function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
+    //TODO:: recalculate due date using params, take assessment deadline and add extension days from db table that stores this information. Send new date to submit_due_date_change
 }

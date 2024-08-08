@@ -32,13 +32,25 @@ global $CFG;
 require_once($CFG->dirroot . '/local/local_obu_assessment_extensions/locallib.php');
 
 class adhoc_process_exceptional_circumstance extends \core\task\adhoc_task {
-
     public function execute() {
-        //TODO: this bit here
-        $endafter = $this->get_custom_data()->endafter;
-
+        global $DB;
         $trace = new \text_progress_trace();
-        local_obu_group_manager_all_group_sync($trace, null, $endafter);
+
+        $assessmentId = $this->get_custom_data()->cmid;
+        $courseModule = $DB->get_record('course_modules', array('id'=>$assessmentId), 'availability');
+
+        if (empty($courseModule->availability)) {
+            $trace->output("No groups found for assessment");
+            return;
+        }
+
+        $accessRestrictions = json_decode($courseModule->availability, true);
+        foreach ($accessRestrictions as $accessRestriction) {
+            $users = local_obu_get_users_by_assessment_group($accessRestriction);
+            foreach ($users as $user) {
+                local_obu_recalculate_due_for_assessment($user, $assessmentId, $trace);
+            }
+        }
         $trace->finished();
     }
 }
