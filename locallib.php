@@ -34,7 +34,7 @@ defined('MOODLE_INTERNAL') || die();
  * @return bool True if user added successfully or the user is already a
  * member of the group, false otherwise.
  */
-function local_obu_ass_ext_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
 
     $extension = new stdClass();
     $extension->student_id   = $studentIdNumber;

@@ -15,8 +15,6 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin event observers
- *
  * @package    local_obu_assessment_extensions
  * @author     Emir Kamel
  * @copyright  2024, Oxford Brookes University {@link http://www.brookes.ac.uk/}
@@ -25,17 +23,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$observers = [
-    [
-        'eventname' => '\core\event\course_module_updated',
-        'callback'  => 'local_obu_coursework_deadline_changed_observer::coursework_deadline_changed',
-        'includefile' => '/local/obu_assessment_extensions/observers/coursework_deadline_changed_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
-    ],
-
-    [
-        'eventname' => '',
-        'callback'  => '',
-    ],
-];
+function local_obu_assess_ex_recalculate_due_dates_for_user($user, $group) {
+    $assessments = local_obu_get_assessments_by_assessment_group($group);
+    foreach ($assessments as $assessment) {
+        local_obu_recalculate_due_for_assessment($user, $assessment);
+    }
+}

@@ -63,7 +63,7 @@ class local_obu_assessment_extensions_external extends external_api {
             return array('result' => -3);
         }
 
-        if(local_obu_ass_ext_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber)) {
+        if(local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber)) {
             return array('result' => 1);
         }
 

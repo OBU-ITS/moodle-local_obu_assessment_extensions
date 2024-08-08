@@ -1,4 +1,6 @@
 <?php
+namespace local_obu_assessment_extensions\observers;
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -14,8 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use mod_hvp\event;
+
 /**
- * Plugin event observers
+ * Plugin coursework deadline changed event observer
  *
  * @package    local_obu_assessment_extensions
  * @author     Emir Kamel
@@ -25,17 +29,19 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$observers = [
-    [
-        'eventname' => '\core\event\course_module_updated',
-        'callback'  => 'local_obu_coursework_deadline_changed_observer::coursework_deadline_changed',
-        'includefile' => '/local/obu_assessment_extensions/observers/coursework_deadline_changed_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
-    ],
+class coursework_deadline_changed_observer {
+    public static function coursework_deadline_changed(\core\event\course_module_updated $event) {
+        global $DB;
 
-    [
-        'eventname' => '',
-        'callback'  => '',
-    ],
-];
+        $eventData = $event->get_data();
+        $cmid = $eventData['objectid'];
+        $context = \context_module::instance($cmid);
+
+        if(strtok($context->get_context_name(), ':')  != 'Assignment') {
+            return;
+        }
+        //TODO: process with an ad hoc task passing in assessment id
+    }
+
+    //TODO: ADHOC TASK needs to decode access restrictions and loop over groups -> loop over users in groups and recalc due dates for the assessments. Ask for more info
+}

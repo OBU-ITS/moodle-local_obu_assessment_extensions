@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+
 /**
- * Plugin event observers
+ * Adhoc task to process exceptional circumstances
  *
  * @package    local_obu_assessment_extensions
  * @author     Emir Kamel
@@ -23,19 +24,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace local_obu_assessment_extensions\task;
+
 defined('MOODLE_INTERNAL') || die();
 
-$observers = [
-    [
-        'eventname' => '\core\event\course_module_updated',
-        'callback'  => 'local_obu_coursework_deadline_changed_observer::coursework_deadline_changed',
-        'includefile' => '/local/obu_assessment_extensions/observers/coursework_deadline_changed_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
-    ],
+global $CFG;
+require_once($CFG->dirroot . '/local/local_obu_assessment_extensions/locallib.php');
 
-    [
-        'eventname' => '',
-        'callback'  => '',
-    ],
-];
+class adhoc_process_exceptional_circumstance extends \core\task\adhoc_task {
+
+    public function execute() {
+        //TODO: this bit here
+        $endafter = $this->get_custom_data()->endafter;
+
+        $trace = new \text_progress_trace();
+        local_obu_group_manager_all_group_sync($trace, null, $endafter);
+        $trace->finished();
+    }
+}

@@ -58,10 +58,10 @@ class local_obu_process_exceptional_circumstances_service {
                 $assessments = local_obu_get_assessments_by_assessment_group($assessmentGroup);
                 foreach ($assessments as $assessment) {
                     local_obu_recalculate_due_for_assessment($unprocessedExtension->student_id, $assessment, $unprocessedExtension->extension_amount);
-                    $DB->set_field('local_obu_assessment_ext', 'is_processed', 1);
-
                 }
             }
+            //TODO:: specify the extension to change the isprocessed field for
+            $DB->set_field('local_obu_assessment_ext', 'is_processed', 1);
         }
     }
 
