@@ -31,26 +31,19 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot . '/local/local_obu_assessment_extensions/locallib.php');
 
-class adhoc_process_exceptional_circumstance extends \core\task\adhoc_task {
+class adhoc_process_deadline_change extends \core\task\adhoc_task {
     public function execute() {
-        global $DB;
         $trace = new \text_progress_trace();
 
-        $assessmentId = $this->get_custom_data()->cmid;
-        $courseModule = $DB->get_record('course_modules', array('id'=>$assessmentId), 'availability');
+        // Retrieve custom data from the ad hoc task
+        $customdata = $this->get_custom_data();
+        $assessment = $customdata['assessment']; // Use array syntax
+        $assessmentUsers = $customdata['assessmentUsers']; // Use array syntax
 
-        if (empty($courseModule->availability)) {
-            $trace->output("No groups found for assessment");
-            return;
+        foreach ($assessmentUsers as $user) {
+            local_obu_recalculate_due_for_assessment($user, $assessment, $trace);
         }
 
-        $accessRestrictions = json_decode($courseModule->availability, true);
-        foreach ($accessRestrictions as $accessRestriction) {
-            $users = local_obu_get_users_by_assessment_group($accessRestriction);
-            foreach ($users as $user) {
-                local_obu_recalculate_due_for_assessment($user, $assessmentId, $trace);
-            }
-        }
         $trace->finished();
     }
 }

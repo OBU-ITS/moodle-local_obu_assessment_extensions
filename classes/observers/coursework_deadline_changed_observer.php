@@ -31,18 +31,38 @@ defined('MOODLE_INTERNAL') || die();
 
 class coursework_deadline_changed_observer {
     public static function coursework_deadline_changed(mod_coursework\event\coursework_deadline_changed $event) {
-        global $DB;
 
         $eventData = $event->get_data();
         $cmid = $eventData['objectid'];
         $context = \context_module::instance($cmid);
 
-        if(strtok($context->get_context_name(), ':')  != 'coursework') {
+        if (strtok($context->get_context_name(), ':') != 'coursework') {
             return;
         }
 
-        $task = new \local_obu_assessment_extensions\task\adhoc_process_exceptional_circumstance();
-        $task->set_custom_data(['assessmentId' => $cmid]);
+        //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
+        $courseModule = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+        $courseId = $courseModule->course;
+        $courseContext = \context_module::instance($courseId);
+        $courseUsers = get_enrolled_users($courseContext);
+
+        $courseModuleUsers = self::filter_course_module_user_list($courseUsers, 'mod/' . $courseModule->modname . ':view', $context);
+
+        $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
+        $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
         \core\task\manager::queue_adhoc_task($task);
+    }
+
+    private static function filter_course_module_user_list($users, $capability, $context): array {
+        $filtered_users = [];
+
+        foreach ($users as $user) {
+            // Check if the user has the specified capability in the given context
+            if (has_capability($capability, $context, $user->id)) {
+                $filtered_users[] = $user;
+            }
+        }
+
+        return $filtered_users;
     }
 }
