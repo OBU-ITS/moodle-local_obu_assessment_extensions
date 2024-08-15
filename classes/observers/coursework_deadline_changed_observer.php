@@ -31,21 +31,23 @@ defined('MOODLE_INTERNAL') || die();
 
 class coursework_deadline_changed_observer {
     public static function coursework_deadline_changed(mod_coursework\event\coursework_deadline_changed $event) {
-
         $eventData = $event->get_data();
+
         $cmid = $eventData['objectid'];
         $context = \context_module::instance($cmid);
 
-        if (strtok($context->get_context_name(), ':') != 'coursework') {
+        //TODO:: May need to change context name depending on Co-sector activity types etc
+        if (strtok($context->get_context_name(), ':') != 'Assignment') {
+            echo "coursework name check failed \n";
             return;
         }
 
         //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
         $courseModule = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
-        $courseId = $courseModule->course;
-        $courseContext = \context_module::instance($courseId);
-        $courseUsers = get_enrolled_users($courseContext);
 
+        $courseId = $courseModule->course;
+        $courseContext = \context_course::instance($courseId);
+        $courseUsers = get_enrolled_users($courseContext);
         $courseModuleUsers = self::filter_course_module_user_list($courseUsers, 'mod/' . $courseModule->modname . ':view', $context);
 
         $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();

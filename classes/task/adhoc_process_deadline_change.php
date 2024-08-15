@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 /**
  * Adhoc task to process exceptional circumstances
  *
@@ -25,21 +24,19 @@
  */
 
 namespace local_obu_assessment_extensions\task;
-
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
-require_once($CFG->dirroot . '/local/local_obu_assessment_extensions/locallib.php');
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class adhoc_process_deadline_change extends \core\task\adhoc_task {
     public function execute() {
         $trace = new \text_progress_trace();
 
-        // Retrieve custom data from the ad hoc task
         $customdata = $this->get_custom_data();
-        $assessment = $customdata['assessment']; // Use array syntax
-        $assessmentUsers = $customdata['assessmentUsers']; // Use array syntax
-
+        $assessment = $customdata->assessment; // Use array syntax
+        $assessmentUsers = $customdata->assessmentUsers; // Use array syntax
+        echo ("starting foreach loop");
         foreach ($assessmentUsers as $user) {
             local_obu_recalculate_due_for_assessment($user, $assessment, $trace);
         }

@@ -90,5 +90,6 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 }
 
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
+    echo ("Recalulating due date for user: " . $user->firstname . " and assessment: " . $assessment);
     //TODO:: recalculate due date using params, take assessment deadline and add extension days from db table that stores this information. Send new date to submit_due_date_change
 }
