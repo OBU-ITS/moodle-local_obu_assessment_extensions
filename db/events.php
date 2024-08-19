@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $observers = [
     [
-        'eventname' => '\core\event\course_module_updated',
+        'eventname' => 'mod_coursework\event\coursework_deadline_changed',
         'callback'  => 'local_obu_coursework_deadline_changed_observer::coursework_deadline_changed',
         'includefile' => '/local/obu_assessment_extensions/observers/coursework_deadline_changed_observer.php',
         'priority'    => 1000,
@@ -35,7 +35,12 @@ $observers = [
     ],
 
     [
-        'eventname' => '',
-        'callback'  => '',
+        'eventname' => '\core\event\course_module_updated',
+        'callback'  => 'local_obu_coursemod_access_restriction_changed_observer::coursemod_access_restriction_changed',
+        'includefile' => '/local/obu_assessment_extensions/observers/coursemod_access_restriction_changed_observer.php',
+        'priority'    => 1000,
+        'internal'    => false,
     ],
+
+    //TODO:: Add userprofile field update and coursemod created event observers here
 ];

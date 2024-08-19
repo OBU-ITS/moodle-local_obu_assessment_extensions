@@ -93,3 +93,17 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
     echo ("Recalulating due date for user: " . $user->firstname . " and assessment: " . $assessment);
     //TODO:: recalculate due date using params, take assessment deadline and add extension days from db table that stores this information. Send new date to submit_due_date_change
 }
+
+function get_groups_from_access_restrictions($accessRestrictions): array {
+    $groupIds = [];
+
+    if (isset($decodedRestrictions['c'])) {
+        foreach ($decodedRestrictions['c'] as $condition) {
+            if (isset($condition['type']) && $condition['type'] === 'group' && isset($condition['id'])) {
+                $groupIds[] = $condition['id'];
+            }
+        }
+    }
+
+    return $groupIds;
+}
