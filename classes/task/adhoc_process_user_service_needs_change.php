@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Adhoc task to process exceptional circumstances
+ * Adhoc task to process a user's service needs change
  *
  * @package    local_obu_assessment_extensions
  * @author     Emir Kamel
@@ -29,14 +29,15 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
-class adhoc_process_deadline_change extends \core\task\adhoc_task {
+class adhoc_process_user_service_needs_change extends \core\task\adhoc_task {
     public function execute() {
         $trace = new \text_progress_trace();
 
         $customdata = $this->get_custom_data();
-        $assessment = $customdata->assessment; // Use array syntax
-        $assessmentUsers = $customdata->assessmentUsers; // Use array syntax
-        foreach ($assessmentUsers as $user) {
+        $assessments = $customdata->assessments;
+        $user = $customdata->user;
+
+        foreach ($assessments as $assessment) {
             local_obu_recalculate_due_for_assessment($user, $assessment, $trace);
         }
 

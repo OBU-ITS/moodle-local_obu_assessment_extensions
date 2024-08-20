@@ -33,7 +33,6 @@ $observers = [
         'priority'    => 1000,
         'internal'    => false,
     ],
-
     [
         'eventname' => '\core\event\course_module_updated',
         'callback'  => 'local_obu_coursemod_access_restriction_changed_observer::coursemod_access_restriction_changed',
@@ -41,6 +40,18 @@ $observers = [
         'priority'    => 1000,
         'internal'    => false,
     ],
-
-    //TODO:: Add userprofile field update and coursemod created event observers here
+    [
+        'eventname' => '\core\event\course_module_created',
+        'callback'  => 'local_obu_coursemod_created_observer::coursemod_created',
+        'includefile' => '/local/obu_assessment_extensions/observers/coursemod_created_observer.php',
+        'priority'    => 1000,
+        'internal'    => false,
+    ],
+    [
+        'eventname' => '\core\event\user_updated',
+        'callback'  => 'local_obu_user_profile_updated_observer::user_profile_updated',
+        'includefile' => '/local/obu_assessment_extensions/observers/user_profile_updated_observer.php',
+        'priority'    => 1000,
+        'internal'    => false,
+    ],
 ];

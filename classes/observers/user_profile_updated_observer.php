@@ -29,21 +29,20 @@ use mod_forum\local\exporters\group;
  */
 
 defined('MOODLE_INTERNAL') || die();
+
 class user_profile_updated_observer {
     public static function user_profile_updated(\core\event\user_updated $event) {
-        // Get event data
         $eventData = $event->get_data();
 
-        // Extract old and new profile data
         $oldProfile = $eventData['other']['oldprofile'] ?? [];
         $newProfile = $eventData['other']['profile'] ?? [];
 
-        //TODO:: more info on how service needs profile field works (is it default null and changed later or can it start with a specific need?)
-
-        // Check if the 'service_needs' profile field was updated
+        //just needs to monitor if service needs is updated as due date change will use service needs regardless anyways
         if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
             $userId = $eventData['userid'];
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($userId);
+            $user = \core_user::get_user($userId);
+
+            $assessmentGroups = local_obu_get_assessment_groups_by_user($user);
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {
@@ -51,12 +50,9 @@ class user_profile_updated_observer {
                 $assessments = array_merge($assessments, $groupAssessments);
             }
 
-            //TODO:: Create adhoc task to process deadline change for the assessments
-
-            // Process the updated field
-            self::process_service_needs_update($userId, $newServiceNeeds);
+            $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
+            $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
+            \core\task\manager::queue_adhoc_task($task);
         }
-
-
     }
 }
