@@ -35,8 +35,9 @@ class coursemod_access_restriction_changed_observer {
 
         $cmid = $eventData['objectid'];
         $context = \context_module::instance($cmid);
+        //TODO:: May need to change context name depending on Co-sector activity types etc   CURRENTLY: 'coursework'
 
-        //TODO:: May need to change context name depending on Co-sector activity types etc
+        //TODO:: use the cmid to look at mdl_course_modules, get the module value check mdl_module 'id' = mdl_course_modules 'module' and mdl_modules 'name' = 'coursework'
         if (strtok($context->get_context_name(), ':') != 'Assignment') {
             return;
         }
