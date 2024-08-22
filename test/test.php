@@ -11,7 +11,7 @@ use core\event\course_module_created;
 
 // Set up the course and module data
 $courseId = 72417; // Replace with a valid course ID
-$moduleId = 2568925; // Replace with a valid module ID (e.g., 'assign' module)
+$moduleId = 1; // Replace with a valid module ID (e.g., 'assign' module)
 $section = 981884; // Section where the module will be added
 
 // Create a dummy module instance (e.g., assignment)
@@ -58,16 +58,14 @@ $event = course_module_created::create([
         'name'=> $moduleInstance->name,
     ],
 ]);
-echo "create event for course module created";
-die();
+
 $event->trigger();
 
 echo "creating observer \n";
-$observer = new coursemod_created_observer();
-echo "observer created \n";
-echo "calling coursework deadline changed function \n";
 
-$observer::coursemod_created($event);
+
+echo "calling coursework deadline changed function from observer \n";
+coursemod_created_observer::coursemod_created($event);
 echo "coursework deadline changed function finished \n";
 // Output success
 echo "Observer triggered successfully!";

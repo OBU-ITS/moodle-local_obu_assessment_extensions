@@ -63,6 +63,16 @@ class local_obu_assessment_extensions_external extends external_api {
             return array('result' => -3);
         }
 
+        if ($assessmentIdNumber == null) {
+            $assessmentGroups = local_obu_get_assessment_groups_by_user($studentIdNumber);
+            foreach ($assessmentGroups as $assessmentGroup){
+                $assessments = local_obu_get_assessments_by_assessment_group($assessmentGroup);
+                foreach ($assessments as $assessment){
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessment->idnumber);
+                }
+            }
+            return array('result' => 1);
+        }
         if(local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber)) {
             return array('result' => 1);
         }

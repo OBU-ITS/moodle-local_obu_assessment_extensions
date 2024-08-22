@@ -30,15 +30,21 @@ defined('MOODLE_INTERNAL') || die();
 
 class coursemod_access_restriction_changed_observer {
     public static function coursemod_access_restriction_changed(\core\event\course_module_updated $event) {
+        global $DB;
+
         $eventData = $event->get_data();
         $legacyEventData = $event->get_data()['other'];
 
         $cmid = $eventData['objectid'];
-        $context = \context_module::instance($cmid);
-        //TODO:: May need to change context name depending on Co-sector activity types etc   CURRENTLY: 'coursework'
 
-        //TODO:: use the cmid to look at mdl_course_modules, get the module value check mdl_module 'id' = mdl_course_modules 'module' and mdl_modules 'name' = 'coursework'
-        if (strtok($context->get_context_name(), ':') != 'Assignment') {
+        $sql = "SELECT m.*
+        FROM {course_modules} cm
+        JOIN {modules} m ON cm.module = m.id
+        WHERE cm.id = :cmid";
+
+        $moduleRecord = $DB->get_record_sql($sql, ['cmid' => $cmid]);
+        //TODO:: May need to change name depending on Co-sector activity types etc
+        if (!$moduleRecord || $moduleRecord->name !== 'assignment') {
             return;
         }
 

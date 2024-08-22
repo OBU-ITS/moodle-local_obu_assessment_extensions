@@ -35,6 +35,7 @@ defined('MOODLE_INTERNAL') || die();
  * member of the group, false otherwise.
  */
 function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+    global $DB;
 
     $extension = new stdClass();
     $extension->student_id   = $studentIdNumber;
@@ -50,6 +51,7 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
 
 //TODO:: Same function as above for cosector table in doc, dont worry about variables you dont have yet, need to come from Jock
 function local_obu_submit_due_date_change($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+    global $DB;
 
     $dueDateChange = new stdClass();
     $dueDateChange->user   = $studentIdNumber;
@@ -69,23 +71,63 @@ function local_obu_submit_due_date_change($studentIdNumber, $extensionDays, $ass
 }
 
 function local_obu_get_assessment_groups_by_user($user): array {
-    //TODO:: find out user's moodle courses and iterate over them to get user groups and find out which groups are for assessments and return those
-    return groups_get_user_groups('', $user);
+    global $DB;
+    $groups = array();
+    $assessmentGroups = array();
+
+    $groupIds = $DB->get_records('groups_members', array('userid' => $user), '', 'groupid');
+    if (empty($groupIds)) {
+        return $groups;
+    }
+
+    $groupIds = array_keys($groupIds);
+    if (!empty($groupIds)) {
+        list($inSql, $params) = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', false);
+        $groups = $DB->get_records_select('groups', "id $inSql", $params);
+
+        foreach ($groups as $group) {
+            if (preg_match("/^\d{4}\..+?_.+?_\d+_\d{6}_\d+_.+?-\d+_\d+_.{1,2}$/", $group->idnumber)) {
+                $assessmentGroups[] = $group;
+            }
+        }
+    }
+
+    return $assessmentGroups;
 }
 
-//TODO :: get users by assesment group
 function local_obu_get_users_by_assessment_group($assessmentGroup): array {
+    global $DB;
     $users = array();
+
+    $userIds = $DB->get_records('groups_members', array('groupid' => $assessmentGroup->id), '', 'userid');
+    if (empty($userIds)) {
+        return $users;
+    }
+
+    $userIds = array_keys($userIds);
+    if (!empty($userIds)) {
+        list($inSql, $params) = $DB->get_in_or_equal($userIds, SQL_PARAMS_QM, '', false);
+        $users = $DB->get_records_select('user', "id $inSql", $params);
+    }
+
     return $users;
 }
 
-function local_obu_get_assessments_by_assessment_group($assessmentGroup) {
-    //TODO:: get assessments out of the assessment group
-    return;
+function local_obu_get_assessments_by_assessment_group($assessmentGroup): array {
+    global $DB;
+
+    $sql = "
+        SELECT cm.*
+        FROM {course_modules} cm
+        WHERE cm.availability LIKE :groupid
+    ";
+    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%'];
+
+    return $DB->get_records_sql($sql, $params);
 }
 
+//TODO:: Function may not be necessary
 function local_obu_get_assessment_groups_by_assessment($assessment) {
-    //TODO:: get assessment groups using an assessment object/id
     return;
 }
 

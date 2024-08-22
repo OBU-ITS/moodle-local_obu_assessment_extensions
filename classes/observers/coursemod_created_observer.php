@@ -29,24 +29,39 @@ namespace local_obu_assessment_extensions\observers;
 defined('MOODLE_INTERNAL') || die();
 class coursemod_created_observer {
     public static function coursemod_created(\core\event\course_module_created $event) {
+        global $DB;
+
         $eventData = $event->get_data();
         $legacyEventData = $event->get_data()['other'];
 
         $cmid = $eventData['objectid'];
-        $context = \context_module::instance($cmid);
 
-        //TODO:: May need to change context name depending on Co-sector activity types etc
-        if (strtok($context->get_context_name(), ':') != 'Assignment') {
+        $sql = "SELECT m.*
+        FROM {course_modules} cm
+        JOIN {modules} m ON cm.module = m.id
+        WHERE cm.id = :cmid";
+
+        $moduleRecord = $DB->get_record_sql($sql, ['cmid' => $cmid]);
+        //TODO:: May need to change name depending on Co-sector activity types etc
+        if (!$moduleRecord || $moduleRecord->name !== 'assignment') {
             return;
         }
 
         //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
-        $courseModule = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
-
+        //TODO:: re-add 5th parameter below 'MUST_EXIST' after debugging is complete
+        $courseModule = get_coursemodule_from_id(null, $cmid, 0, false);
+        if (!$courseModule) {
+            echo("Course module with cmid {$cmid} does not exist or could not be retrieved.");
+            die();
+        } else {
+            echo("Course module found: " . print_r($courseModule, true));
+            die();
+        }
+        echo "coursemoduleretrieved";
+        die();
         $newRestrictions = $courseModule->availability;
         $oldRestrictions = $legacyEventData['availability'] ?? null;
-
-        if ($newRestrictions !== $oldRestrictions) {
+        if ($oldRestrictions && ($newRestrictions == $oldRestrictions)) {
             return;
         } else {
             $decodedRestrictions = json_decode($newRestrictions, true);
@@ -61,6 +76,7 @@ class coursemod_created_observer {
             $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
             $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
             \core\task\manager::queue_adhoc_task($task);
+            $task->execute();
         }
     }
 

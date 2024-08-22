@@ -42,7 +42,7 @@ class user_profile_updated_observer {
             $userId = $eventData['userid'];
             $user = \core_user::get_user($userId);
 
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($user);
+            $assessmentGroups = local_obu_get_assessment_groups_by_user($userId);
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {
