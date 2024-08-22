@@ -53,15 +53,16 @@ class local_obu_process_exceptional_circumstances_service {
         global $DB;
 
         foreach ($unprocessedExtensions as $unprocessedExtension) {
+            $user = $unprocessedExtension->student_id;
             $assessmentGroups = local_obu_get_assessment_groups_by_user($unprocessedExtension->student_id);
             foreach ($assessmentGroups as $assessmentGroup) {
                 $assessments = local_obu_get_assessments_by_assessment_group($assessmentGroup);
                 foreach ($assessments as $assessment) {
-                    local_obu_recalculate_due_for_assessment($unprocessedExtension->student_id, $assessment, $unprocessedExtension->extension_amount);
+                    local_obu_recalculate_due_for_assessment($user , $assessment, $unprocessedExtension->extension_amount);
                 }
             }
-            //TODO:: specify the extension to change the isprocessed field for
-            $DB->set_field('local_obu_assessment_ext', 'is_processed', 1);
+
+            $DB->set_field('local_obu_assessment_ext', 'is_processed', 1, array('id' => $unprocessedExtension->id));
         }
     }
 

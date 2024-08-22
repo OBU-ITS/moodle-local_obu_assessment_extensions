@@ -26,7 +26,7 @@ namespace local_obu_assessment_extensions\task;
 class local_obu_process_exceptional_circumstances extends \core\task\scheduled_task{
 
     public function get_name() : string {
-        return "Skeleton Task";
+        return "Process Exceptional Circumstances Task";
     }
 
     public function execute() {

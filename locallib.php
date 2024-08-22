@@ -49,15 +49,17 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-//TODO:: Same function as above for cosector table in doc, dont worry about variables you dont have yet, need to come from Jock
-function local_obu_submit_due_date_change($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+//TODO:: Need more info from cosector on formats of data to go in this table, need to complete this function
+function local_obu_submit_due_date_change($user, $assessment, $newDeadline = null) {
     global $DB;
+    $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
+    $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
 
     $dueDateChange = new stdClass();
-    $dueDateChange->user   = $studentIdNumber;
-    $dueDateChange->course    = '';
+    $dueDateChange->user   = $user->idnumber;
+    $dueDateChange->course    = $course->shortname;
     $dueDateChange->assessment = '';
-    $dueDateChange->date_time_value = '';
+    $dueDateChange->date_time_value = $newDeadline;
     $dueDateChange->timelimit_value = '';
     $dueDateChange->type = '';
     $dueDateChange->reason_code = '';
@@ -131,12 +133,60 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
     return;
 }
 
+//assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
-    echo ("Recalulating due date for user: " . $user->firstname . " and assessment: " . $assessment);
-    //TODO:: recalculate due date using params, take assessment deadline and add extension days from db table that stores this information. Send new date to submit_due_date_change
+    global $DB;
+    //TODO:: coursework table may need looking at to confirm the names of the fields used here
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreed_grade_marking_deadline', MUST_EXIST);
+    $deadline = $courseworkRecord->deadline;
+    $hardDeadline = $courseworkRecord->agreed_marking_grade_deadline - 604800; //(unix timestamp value of 7 days)
+    $newDeadline = 0;
+    $userServiceNeeds = 0;
+
+    // Get the field ID for 'service_needs' profile field
+    $field = $DB->get_record('user_info_field', ['shortname' => 'service_needs']);
+
+    // Retrieve the service_needs value for the specific user
+    if ($field) {
+        $serviceNeeds = $DB->get_field('user_info_data', 'data', [
+            'userid' => $user->id,
+            'fieldid' => $field->id,
+        ]);
+
+        echo "Service Needs: " . $serviceNeeds;
+    } else {
+        echo "Service Needs field not found.";
+    }
+
+    $serviceNeedsMapping = [
+        'CWON' => 7,
+        'CWTW' => 14,
+        'CWTH' => 21,
+        'CWFO' => 28,
+    ];
+    $userServiceNeeds = $serviceNeedsMapping[$serviceNeeds] ?? 0;
+
+    $extensionRecord = $DB->get_record('local_obu_assessment_ext', [
+        'student_id' => $user->id,
+        'assessment_id' => $assessment
+    ]);
+    if ($extensionRecord) {
+        if ($extensionRecord->extension_amount != 0 && $extensionRecord->extension_amount != 1) {
+            $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionRecord->extension_amount * 24 * 3600);
+            if ($newDeadline > $hardDeadline) {
+                $newDeadline = $hardDeadline;
+            }
+        } else {
+            $newDeadline = null;
+        }
+    } else { //TODO:: what do we do about service needs if user has no extensions where else do these get processed?
+        $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600);
+    }
+
+    local_obu_submit_due_date_change($user, $assessment, $newDeadline);
 }
 
-function get_groups_from_access_restrictions($accessRestrictions): array {
+function get_groups_from_access_restrictions($decodedRestrictions): array {
     $groupIds = [];
 
     if (isset($decodedRestrictions['c'])) {

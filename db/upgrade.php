@@ -32,11 +32,20 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
 
     $result = true;
 
-//    if ($oldversion < 2024071701) {
-//
-//
-//
-//        // obu_application savepoint reached
-//        upgrade_plugin_savepoint(true, 2024071701, 'local', 'obu_assessment_extensions');
-//    }
+    if ($oldversion < 2024082201) {
+        // Define the table and the field.
+        $table = new xmldb_table('local_obu_assessment_ext');
+        $field = new xmldb_field('assessment_id', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, false, null, 'student_id');
+
+        // Check if the field exists and is currently nullable.
+        if ($dbman->field_exists($table, $field)) {
+            // Update the field to be non-nullable.
+            $dbman->change_field_notnull($table, $field);
+        }
+
+        // Savepoint reached.
+        upgrade_plugin_savepoint(true, 2024082201, 'local', 'obu_assessment_extensions');
+    }
+
+    return $result;
 }
