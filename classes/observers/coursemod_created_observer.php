@@ -65,7 +65,7 @@ class coursemod_created_observer {
             return;
         } else {
             $decodedRestrictions = json_decode($newRestrictions, true);
-            $groups = get_groups_from_access_restrictions($decodedRestrictions);
+            $groups = local_obu_get_groups_from_access_restrictions($decodedRestrictions);
             $courseModuleUsers = array();
 
             foreach ($groups as $group){

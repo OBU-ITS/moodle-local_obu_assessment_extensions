@@ -49,21 +49,25 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-//TODO:: Need more info from cosector on formats of data to go in this table, need to complete this function
+//TODO:: Need to check values for mitigation/deletions
 function local_obu_submit_due_date_change($user, $assessment, $newDeadline = null) {
     global $DB;
     $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
+    //TODO:: can a user be in multiple assessment groups for the same assessment?
+    $assessmentGroups = local_obu_get_assessment_groups_by_assessment($assessment);
+    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user);
+    $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
 
     $dueDateChange = new stdClass();
-    $dueDateChange->user   = $user->idnumber;
-    $dueDateChange->course    = $course->shortname;
-    $dueDateChange->assessment = '';
-    $dueDateChange->date_time_value = $newDeadline;
-    $dueDateChange->timelimit_value = '';
-    $dueDateChange->type = '';
-    $dueDateChange->reason_code = '';
-    $dueDateChange->reason_desc = '';
+    $dueDateChange->user   = $user->username;
+    $dueDateChange->course    = $course->idnumber;
+    $dueDateChange->assessment = $assessmentGroup->name;
+    $dueDateChange->date = date('d/m/Y H:i', $newDeadline);
+    $dueDateChange->timelimit = null;
+    $dueDateChange->type = null;
+    $dueDateChange->reason_code = null;
+    $dueDateChange->reason_desc = null;
     $dueDateChange->action = '';
     $dueDateChange->timestamp = time();
 
@@ -128,25 +132,36 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
     return $DB->get_records_sql($sql, $params);
 }
 
-//TODO:: Function may not be necessary
 function local_obu_get_assessment_groups_by_assessment($assessment) {
-    return;
+    global $DB;
+    $assessmentGroups = array();
+    $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
+
+    if (!empty($courseModule->availability)) {
+        $decodedRestrictions = json_decode($courseModule->availability, true);
+
+        if (!empty($decodedRestrictions['c'])) {
+            foreach ($decodedRestrictions['c'] as $condition) {
+                if ($condition['type'] === 'group' && !empty($condition['id'])) {
+                    $group = $DB->get_record('groups', array('id' => $condition['id']), '*', MUST_EXIST);
+                    $assessmentGroups[] = $group;
+                }
+            }
+        }
+    }
+
+    return $assessmentGroups;
 }
 
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    //TODO:: coursework table may need looking at to confirm the names of the fields used here
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreed_grade_marking_deadline', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreedgrademarkingdeadline', MUST_EXIST);
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->agreed_marking_grade_deadline - 604800; //(unix timestamp value of 7 days)
-    $newDeadline = 0;
-    $userServiceNeeds = 0;
 
-    // Get the field ID for 'service_needs' profile field
     $field = $DB->get_record('user_info_field', ['shortname' => 'service_needs']);
 
-    // Retrieve the service_needs value for the specific user
     if ($field) {
         $serviceNeeds = $DB->get_field('user_info_data', 'data', [
             'userid' => $user->id,
@@ -186,7 +201,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
     local_obu_submit_due_date_change($user, $assessment, $newDeadline);
 }
 
-function get_groups_from_access_restrictions($decodedRestrictions): array {
+function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
     $groupIds = [];
 
     if (isset($decodedRestrictions['c'])) {
@@ -198,4 +213,16 @@ function get_groups_from_access_restrictions($decodedRestrictions): array {
     }
 
     return $groupIds;
+}
+
+function local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups) {
+    $userGroupIds = array_column($userAssessmentGroups, null, 'id');
+
+    foreach ($assessmentGroups as $assessmentGroup) {
+        if (isset($userGroupIds[$assessmentGroup->id])) {
+            return $assessmentGroup;
+        }
+    }
+
+    return null;
 }

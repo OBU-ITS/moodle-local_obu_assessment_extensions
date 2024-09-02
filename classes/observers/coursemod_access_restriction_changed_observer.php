@@ -56,7 +56,7 @@ class coursemod_access_restriction_changed_observer {
 
         if ($newRestrictions !== $oldRestrictions) {
             $decodedRestrictions = json_decode($newRestrictions, true);
-            $groups = get_groups_from_access_restrictions($decodedRestrictions);
+            $groups = local_obu_get_groups_from_access_restrictions($decodedRestrictions);
             $courseModuleUsers = array();
 
             foreach ($groups as $group){
