@@ -49,29 +49,41 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-//TODO:: Need to check values for mitigation/deletions
-function local_obu_submit_due_date_change($user, $assessment, $newDeadline = null) {
+//TODO:: Do we need to check existing awards for update type? awaiting co sector
+function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     global $DB;
     $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
-    //TODO:: can a user be in multiple assessment groups for the same assessment?
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($assessment);
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user);
     $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
+    if ($newDeadline == 0) {
+        $date = null;
+        $type = "coursework_temporary_exemption";
+        $action = "insert";
+    } elseif ($newDeadline == -1) {
+        $date = null;
+        $type = "coursework_temporary_exemption";
+        $action = "delete";
+    } else {
+        $date = date('d/m/Y H:i', $newDeadline);
+        $type = "coursework_mitigations";
+        $action = "insert";
+    }
 
     $dueDateChange = new stdClass();
     $dueDateChange->user   = $user->username;
     $dueDateChange->course    = $course->idnumber;
     $dueDateChange->assessment = $assessmentGroup->name;
-    $dueDateChange->date = date('d/m/Y H:i', $newDeadline);
+    $dueDateChange->date = $date;
     $dueDateChange->timelimit = null;
-    $dueDateChange->type = null;
+    $dueDateChange->type = $type;
     $dueDateChange->reason_code = null;
     $dueDateChange->reason_desc = null;
-    $dueDateChange->action = '';
+    $dueDateChange->action = $action;
     $dueDateChange->timestamp = time();
 
-    $DB->insert_record('module_extensions_queue_table', $dueDateChange);
+    $DB->insert_record('module_extensions_queue', $dueDateChange);
 
     return true;
 }
@@ -186,13 +198,13 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         'assessment_id' => $assessment
     ]);
     if ($extensionRecord) {
-        if ($extensionRecord->extension_amount != 0 && $extensionRecord->extension_amount != 1) {
+        if ($extensionRecord->extension_amount != 0 && $extensionRecord->extension_amount != -1) {
             $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionRecord->extension_amount * 24 * 3600);
             if ($newDeadline > $hardDeadline) {
                 $newDeadline = $hardDeadline;
             }
         } else {
-            $newDeadline = null;
+            $newDeadline = $extensionRecord->extension_amount;
         }
     } else { //TODO:: what do we do about service needs if user has no extensions where else do these get processed?
         $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600);

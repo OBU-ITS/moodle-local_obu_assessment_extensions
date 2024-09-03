@@ -43,7 +43,7 @@ class coursemod_access_restriction_changed_observer {
         WHERE cm.id = :cmid";
 
         $moduleRecord = $DB->get_record_sql($sql, ['cmid' => $cmid]);
-        //TODO:: May need to change name depending on Co-sector activity types etc
+        //TODO:: May need to change name depending on Co-sector activity types: "coursework"
         if (!$moduleRecord || $moduleRecord->name !== 'assignment') {
             return;
         }
