@@ -28,13 +28,13 @@ namespace local_obu_assessment_extensions\observers;
 defined('MOODLE_INTERNAL') || die();
 
 class coursework_deadline_changed_observer {
-    public static function coursework_deadline_changed(mod_coursework\event\coursework_deadline_changed $event) {
+    public static function coursework_deadline_changed(\mod_coursework\event\coursework_deadline_changed $event) {
         $eventData = $event->get_data();
 
         $cmid = $eventData['objectid'];
         $context = \context_module::instance($cmid);
 
-        //TODO:: May need to change context name depending on Co-sector activity types etc
+        //TODO:: This may not be needed on live as event is only triggered by coursework activities
         if (strtok($context->get_context_name(), ':') != 'Assignment') {
             return;
         }

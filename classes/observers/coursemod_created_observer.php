@@ -42,6 +42,9 @@ class coursemod_created_observer {
         WHERE cm.id = :cmid";
 
         $moduleRecord = $DB->get_record_sql($sql, ['cmid' => $cmid]);
+
+        var_dump($moduleRecord);
+
         //TODO:: May need to change name depending on Co-sector activity types etc
         if (!$moduleRecord || $moduleRecord->name !== 'assignment') {
             return;
@@ -49,7 +52,7 @@ class coursemod_created_observer {
 
         //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
         //TODO:: re-add 5th parameter below 'MUST_EXIST' after debugging is complete
-        $courseModule = get_coursemodule_from_id(null, $cmid, 0, false);
+        $courseModule = get_coursemodule_from_id($moduleRecord->name, $cmid, 0, false, MUST_EXIST);
         if (!$courseModule) {
             echo("Course module with cmid {$cmid} does not exist or could not be retrieved.");
             die();

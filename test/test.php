@@ -23,7 +23,7 @@ $moduleInstance->introformat = FORMAT_HTML;
 $moduleInstance->duedate = time() + 7 * 24 * 60 * 60; // Set due date to one week from now
 
 // Insert the module instance (this will return the instance ID)
-$instanceid = $DB->insert_record('assign', $moduleInstance);
+$instanceid = $DB->insert_record('assignment', $moduleInstance);
 
 // Create a dummy course module
 $courseModuleData = new \stdClass();
