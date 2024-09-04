@@ -49,18 +49,47 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-//TODO:: Do we need to check existing awards for update type? awaiting co sector
 function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     global $DB;
+
     $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
+
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($assessment);
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user);
     $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
+
+    if ($newDeadline == 0) {
+        $conditions = [
+            'student_id' => $user->username,
+            'assessment_id' => $assessment,
+            'extension_amount' => 0
+        ];
+        $existingExtension = $DB->get_record_select(
+            'local_obu_assessment_ext',
+            'student_id = :student_id AND assessment_id = :assessment_id AND extension_amount = :extension_amount',
+            $conditions
+        );
+    } else {
+        $conditions = [
+            'student_id' => $user->username,
+            'assessment_id' => $assessment,
+        ];
+        $existingExtension = $DB->get_record_select(
+            'local_obu_assessment_ext',
+            'student_id = :student_id AND assessment_id = :assessment_id AND extension_amount != 0 AND extension_amount != -1',
+            $conditions
+        );
+    }
+
     if ($newDeadline == 0) {
         $date = null;
         $type = "coursework_temporary_exemption";
-        $action = "insert";
+        if ($existingExtension){
+            $action = "update";
+        } else {
+            $action = "insert";
+        }
     } elseif ($newDeadline == -1) {
         $date = null;
         $type = "coursework_temporary_exemption";
@@ -68,7 +97,11 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     } else {
         $date = date('d/m/Y H:i', $newDeadline);
         $type = "coursework_mitigations";
-        $action = "insert";
+        if ($existingExtension){
+            $action = "update";
+        } else {
+            $action = "insert";
+        }
     }
 
     $dueDateChange = new stdClass();
