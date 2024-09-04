@@ -202,8 +202,9 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    echo "getting to recalc function";
+    echo "recalculating due date for user: " . $user->firstname . "on assessment: " . $assessment;
     die();
+    //TODO:: can't test this as I don't have the coursework table in my local instance
     $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreedgrademarkingdeadline', MUST_EXIST);
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->agreed_marking_grade_deadline - 604800; //(unix timestamp value of 7 days)

@@ -28,6 +28,9 @@ namespace local_obu_assessment_extensions\observers;
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
+
 class coursemod_access_restriction_changed_observer {
     public static function coursemod_access_restriction_changed(\core\event\course_module_updated $event) {
         global $DB;
@@ -49,10 +52,13 @@ class coursemod_access_restriction_changed_observer {
         }
 
         //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
-        $courseModule = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
+        $courseModule = get_coursemodule_from_id($moduleRecord->name, $cmid, 0, false, MUST_EXIST);
 
         $newRestrictions = $courseModule->availability;
         $oldRestrictions = $legacyEventData['availability'] ?? null;
+
+        echo "new restrictions: " . $newRestrictions;
+        echo "old restrictions: " . $oldRestrictions;
 
         if ($newRestrictions !== $oldRestrictions) {
             $decodedRestrictions = json_decode($newRestrictions, true);
@@ -63,10 +69,11 @@ class coursemod_access_restriction_changed_observer {
                 $groupUsers = local_obu_get_users_by_assessment_group($group);
                 $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
             }
-
             $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
             $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
             \core\task\manager::queue_adhoc_task($task);
+            //TODO:: remove this bit below when done
+            $task->execute();
         }
     }
 }

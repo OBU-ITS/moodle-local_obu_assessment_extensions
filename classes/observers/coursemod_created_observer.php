@@ -49,7 +49,7 @@ class coursemod_created_observer {
 
         var_dump($moduleRecord);
 
-        //TODO:: May need to change name depending on Co-sector activity types etc
+        //TODO:: May need to change name depending on Co-sector activity types etc "coursework"
         if (!$moduleRecord || $moduleRecord->name !== 'assignment') {
             return;
         }
@@ -86,6 +86,7 @@ class coursemod_created_observer {
             $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
             $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
             \core\task\manager::queue_adhoc_task($task);
+            //TODO:: delete this line below when done?
             $task->execute();
         }
     }

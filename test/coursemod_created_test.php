@@ -1,5 +1,9 @@
 <?php
-namespace local_obu_assessment_extensions\test;
+//**
+//  URL REMINDER: http://poodledev/moodle/local/obu_assessment_extensions/test/coursemod_created_test.php
+//  */
+
+namespace local_obu_assessment_extensions\coursemod_created_test;
 global $DB;
 require_once(__DIR__ . '/../../../config.php');  // Include Moodle's config.php file
 require_once($CFG->dirroot . '/course/modlib.php'); // Required to create course modules
