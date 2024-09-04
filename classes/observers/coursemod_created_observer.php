@@ -27,6 +27,10 @@ namespace local_obu_assessment_extensions\observers;
  */
 
 defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
+
 class coursemod_created_observer {
     public static function coursemod_created(\core\event\course_module_created $event) {
         global $DB;
@@ -51,30 +55,33 @@ class coursemod_created_observer {
         }
 
         //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
-        //TODO:: re-add 5th parameter below 'MUST_EXIST' after debugging is complete
         $courseModule = get_coursemodule_from_id($moduleRecord->name, $cmid, 0, false, MUST_EXIST);
-        if (!$courseModule) {
-            echo("Course module with cmid {$cmid} does not exist or could not be retrieved.");
-            die();
-        } else {
-            echo("Course module found: " . print_r($courseModule, true));
-            die();
-        }
-        echo "coursemoduleretrieved";
-        die();
+        var_dump($courseModule);
+
+
         $newRestrictions = $courseModule->availability;
         $oldRestrictions = $legacyEventData['availability'] ?? null;
+
+        var_dump($newRestrictions);
+        var_dump($oldRestrictions);
+
         if ($oldRestrictions && ($newRestrictions == $oldRestrictions)) {
             return;
         } else {
             $decodedRestrictions = json_decode($newRestrictions, true);
+            var_dump($decodedRestrictions);
+            echo "retrieving groups from decoded restrictions \n";
             $groups = local_obu_get_groups_from_access_restrictions($decodedRestrictions);
             $courseModuleUsers = array();
 
             foreach ($groups as $group){
+                echo "getting users by group ";
                 $groupUsers = local_obu_get_users_by_assessment_group($group);
+                echo "group users retrieved: " . var_dump($groupUsers);
                 $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
             }
+
+            echo "all group users retrieved: " . var_dump($courseModuleUsers);
 
             $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
             $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);

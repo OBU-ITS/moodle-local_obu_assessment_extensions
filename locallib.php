@@ -149,15 +149,16 @@ function local_obu_get_assessment_groups_by_user($user): array {
 function local_obu_get_users_by_assessment_group($assessmentGroup): array {
     global $DB;
     $users = array();
+    $userIds = $DB->get_records('groups_members', array('groupid' => $assessmentGroup), '', 'userid');
 
-    $userIds = $DB->get_records('groups_members', array('groupid' => $assessmentGroup->id), '', 'userid');
     if (empty($userIds)) {
         return $users;
     }
 
     $userIds = array_keys($userIds);
+
     if (!empty($userIds)) {
-        list($inSql, $params) = $DB->get_in_or_equal($userIds, SQL_PARAMS_QM, '', false);
+        list($inSql, $params) = $DB->get_in_or_equal($userIds, SQL_PARAMS_QM, '', true);
         $users = $DB->get_records_select('user', "id $inSql", $params);
     }
 
@@ -201,6 +202,8 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
+    echo "getting to recalc function";
+    die();
     $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreedgrademarkingdeadline', MUST_EXIST);
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->agreed_marking_grade_deadline - 604800; //(unix timestamp value of 7 days)
@@ -239,7 +242,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         } else {
             $newDeadline = $extensionRecord->extension_amount;
         }
-    } else { //TODO:: what do we do about service needs if user has no extensions where else do these get processed?
+    } else {
         $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600);
     }
 

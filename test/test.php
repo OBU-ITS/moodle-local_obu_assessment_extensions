@@ -59,7 +59,7 @@ $event = course_module_created::create([
     ],
 ]);
 
-$event->trigger();
+//$event->trigger();
 
 echo "creating observer \n";
 
