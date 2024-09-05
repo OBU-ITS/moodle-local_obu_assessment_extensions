@@ -26,10 +26,8 @@ namespace local_obu_assessment_extensions\services;
 class local_obu_process_exceptional_circumstances_service {
 
     private static ?local_obu_process_exceptional_circumstances_service $instance = null;
-    public static function getInstance() : local_obu_process_exceptional_circumstances_service
-    {
-        if (self::$instance == null)
-        {
+    public static function getInstance() : local_obu_process_exceptional_circumstances_service {
+        if (self::$instance == null) {
             self::$instance = new self();
         }
 
@@ -49,7 +47,7 @@ class local_obu_process_exceptional_circumstances_service {
         return $DB->get_records_sql($sql);
     }
 
-    public function process_extensions($unprocessedExtensions){
+    public function process_extensions($unprocessedExtensions) {
         global $DB;
 
         foreach ($unprocessedExtensions as $unprocessedExtension) {

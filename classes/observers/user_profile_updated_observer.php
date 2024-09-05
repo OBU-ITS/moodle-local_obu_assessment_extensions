@@ -16,8 +16,6 @@ namespace local_obu_assessment_extensions\observers;
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-use core_calendar\local\event\entities\event;
-use mod_forum\local\exporters\group;
 
 /**
  * Plugin user profile updated event observer
@@ -30,6 +28,9 @@ use mod_forum\local\exporters\group;
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
+
 class user_profile_updated_observer {
     public static function user_profile_updated(\core\event\user_updated $event) {
         $eventData = $event->get_data();
@@ -37,7 +38,6 @@ class user_profile_updated_observer {
         $oldProfile = $eventData['other']['oldprofile'] ?? [];
         $newProfile = $eventData['other']['profile'] ?? [];
 
-        //just needs to monitor if service needs is updated as due date change will use service needs regardless anyways
         if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
             $userId = $eventData['userid'];
             $user = \core_user::get_user($userId);

@@ -1,4 +1,5 @@
 <?php
+
 namespace local_obu_assessment_extensions\handlers;
 
 // This file is part of Moodle - http://moodle.org/
@@ -25,9 +26,9 @@ namespace local_obu_assessment_extensions\handlers;
 
 use local_obu_assessment_extensions\services\local_obu_process_exceptional_circumstances_service;
 use progress_trace;
-
 class local_obu_process_exceptional_circumstances_handler {
     private local_obu_process_exceptional_circumstances_service $process_exceptional_circumstances_service;
+
     private progress_trace $trace;
 
     public function __construct($trace) {

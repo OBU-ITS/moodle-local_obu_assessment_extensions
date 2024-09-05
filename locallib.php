@@ -56,7 +56,7 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
 
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($assessment);
-    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user);
+    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->id);
     $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
 
     if ($newDeadline == 0) {
@@ -83,7 +83,7 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     }
 
     if ($newDeadline == 0) {
-        $date = null;
+        $date = "temporary";
         $type = "coursework_temporary_exemption";
         if ($existingExtension){
             $action = "update";
@@ -114,11 +114,9 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     $dueDateChange->reason_code = null;
     $dueDateChange->reason_desc = null;
     $dueDateChange->action = $action;
-    $dueDateChange->timestamp = time();
+    $dueDateChange->timecreated = time();
 
     $DB->insert_record('module_extensions_queue', $dueDateChange);
-
-    return true;
 }
 
 function local_obu_get_assessment_groups_by_user($user): array {
@@ -127,13 +125,15 @@ function local_obu_get_assessment_groups_by_user($user): array {
     $assessmentGroups = array();
 
     $groupIds = $DB->get_records('groups_members', array('userid' => $user), '', 'groupid');
+
     if (empty($groupIds)) {
         return $groups;
     }
 
     $groupIds = array_keys($groupIds);
+
     if (!empty($groupIds)) {
-        list($inSql, $params) = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', false);
+        list($inSql, $params) = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', true);
         $groups = $DB->get_records_select('groups', "id $inSql", $params);
 
         foreach ($groups as $group) {
@@ -202,9 +202,7 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    echo "recalculating due date for user: " . $user->firstname . "on assessment: " . $assessment;
-    die();
-    //TODO:: can't test this as I don't have the coursework table in my local instance
+
     $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreedgrademarkingdeadline', MUST_EXIST);
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->agreed_marking_grade_deadline - 604800; //(unix timestamp value of 7 days)
@@ -212,14 +210,18 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
     $field = $DB->get_record('user_info_field', ['shortname' => 'service_needs']);
 
     if ($field) {
-        $serviceNeeds = $DB->get_field('user_info_data', 'data', [
+        $serviceNeedsJson = $DB->get_field('user_info_data', 'data', [
             'userid' => $user->id,
             'fieldid' => $field->id,
         ]);
 
-        echo "Service Needs: " . $serviceNeeds;
-    } else {
-        echo "Service Needs field not found.";
+        $serviceNeedsArray = json_decode($serviceNeedsJson, true);
+
+        if (is_array($serviceNeedsArray) && isset($serviceNeedsArray[0]['serviceCode'])) {
+            $serviceNeeds = $serviceNeedsArray[0]['serviceCode'];
+        } else {
+            $serviceNeeds = null;
+        }
     }
 
     $serviceNeedsMapping = [
@@ -230,10 +232,13 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
     ];
     $userServiceNeeds = $serviceNeedsMapping[$serviceNeeds] ?? 0;
 
-    $extensionRecord = $DB->get_record('local_obu_assessment_ext', [
-        'student_id' => $user->id,
-        'assessment_id' => $assessment
-    ]);
+    $extensionRecord = $DB->get_record_sql(
+        "SELECT *
+            FROM {local_obu_assessment_ext}
+            WHERE " . $DB->sql_compare_text('student_id') . " = ?
+            AND " . $DB->sql_compare_text('assessment_id') . " = ?",
+            [$user->id, $assessment]);
+
     if ($extensionRecord) {
         if ($extensionRecord->extension_amount != 0 && $extensionRecord->extension_amount != -1) {
             $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionRecord->extension_amount * 24 * 3600);
@@ -245,8 +250,10 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         }
     } else {
         $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600);
+        if ($newDeadline > $hardDeadline) {
+            $newDeadline = $hardDeadline;
+        }
     }
-
     local_obu_submit_due_date_change($user, $assessment, $newDeadline);
 }
 
@@ -265,7 +272,10 @@ function local_obu_get_groups_from_access_restrictions($decodedRestrictions): ar
 }
 
 function local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups) {
-    $userGroupIds = array_column($userAssessmentGroups, null, 'id');
+    $userGroupIds = array();
+    foreach ($userAssessmentGroups as $group) {
+        $userGroupIds[$group->id] = $group;
+    }
 
     foreach ($assessmentGroups as $assessmentGroup) {
         if (isset($userGroupIds[$assessmentGroup->id])) {

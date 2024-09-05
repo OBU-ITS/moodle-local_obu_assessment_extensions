@@ -23,10 +23,24 @@
 
 // Define the web service functions to install.
 $functions = array(
-
+    'local_obu_assessment_extensions_external_award_exceptional_circumstance' => array(
+        'classname'   => 'local_obu_assessment_extensions_external',
+        'methodname'  => 'award_exceptional_circumstance',
+        'classpath'   => 'local/obu_assessment_extensions/externallib.php',
+        'description' => 'Takes in a student id, assessment id and number of days to extend and processes that information to be stored in a table',
+        'type'        => 'read',
+        'capabilities'=> ''
+    )
 );
 
 // Define the services to install as pre-build services.
 $services = array(
-
+    'OBU Assessment Extensions' => array(
+        'shortname' => 'obu_assessment_extensions',
+        'functions' => array(
+            'local_obu_assessment_extensions_external_award_exceptional_circumstance'
+        ),
+        'restrictedusers' => 1,
+        'enabled' => 1
+    )
 );

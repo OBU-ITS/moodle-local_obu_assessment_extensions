@@ -1,16 +1,16 @@
 <?php
 //**
-//  URL REMINDER: http://poodledev/moodle/local/obu_assessment_extensions/test/restriction_changed_test.php
+//  URL REMINDER: http://poodledev/moodle/local/obu_assessment_extensions/test/deadline_changed_test.php
 //  */
 
-namespace local_obu_assessment_extensions\restriction_changed_test;
+namespace local_obu_assessment_extensions\deadline_changed_test;
 global $DB;
 require_once(__DIR__ . '/../../../config.php');  // Include Moodle's config.php file
 require_once($CFG->dirroot . '/course/modlib.php'); // Required to create course modules
 
 defined('MOODLE_INTERNAL') || die();
 
-use local_obu_assessment_extensions\observers\coursemod_access_restriction_changed_observer;
+use local_obu_assessment_extensions\observers\coursework_deadline_changed_observer;
 use core\event\course_module_updated;
 
 if (!is_siteadmin()) {
@@ -56,7 +56,7 @@ $courseModuleData->availability = json_encode([
 // Create the course module using Moodle's modlib.php function
 $cmid = add_course_module($courseModuleData);
 
-// Trigger the event manually to simulate the update
+// Simulate the coursework deadline changed event
 $event = course_module_updated::create([
     'context' => \context_module::instance($cmid),
     'objectid' => $cmid,
@@ -69,13 +69,12 @@ $event = course_module_updated::create([
     ],
 ]);
 
-// $event->trigger(); // We are manually calling the observer, so no need to trigger the event here.
+// Trigger the observer manually
+echo "Calling coursework deadline changed function from observer <br>";
 
-echo "Calling access restriction changed function from observer <br>";
+coursework_deadline_changed_observer::coursework_deadline_changed($event);
 
-coursemod_access_restriction_changed_observer::coursemod_access_restriction_changed($event);
-
-echo "Access restriction changed function finished \n";
+echo "Coursework deadline changed function finished <br>";
 // Output success
-echo "Observer triggered successfully!";
+echo "Observer triggered successfully!<br>";
 die();

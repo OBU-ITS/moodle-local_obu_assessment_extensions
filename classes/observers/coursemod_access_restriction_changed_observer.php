@@ -46,19 +46,15 @@ class coursemod_access_restriction_changed_observer {
         WHERE cm.id = :cmid";
 
         $moduleRecord = $DB->get_record_sql($sql, ['cmid' => $cmid]);
-        //TODO:: May need to change name depending on Co-sector activity types: "coursework"
-        if (!$moduleRecord || $moduleRecord->name !== 'assignment') {
+
+        if (!$moduleRecord || $moduleRecord->name !== 'coursework') {
             return;
         }
 
-        //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
         $courseModule = get_coursemodule_from_id($moduleRecord->name, $cmid, 0, false, MUST_EXIST);
 
         $newRestrictions = $courseModule->availability;
         $oldRestrictions = $legacyEventData['availability'] ?? null;
-
-        echo "new restrictions: " . $newRestrictions;
-        echo "old restrictions: " . $oldRestrictions;
 
         if ($newRestrictions !== $oldRestrictions) {
             $decodedRestrictions = json_decode($newRestrictions, true);
@@ -72,8 +68,6 @@ class coursemod_access_restriction_changed_observer {
             $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
             $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
             \core\task\manager::queue_adhoc_task($task);
-            //TODO:: remove this bit below when done
-            $task->execute();
         }
     }
 }

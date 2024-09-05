@@ -1,4 +1,5 @@
 <?php
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -38,7 +39,7 @@ class adhoc_process_user_service_needs_change extends \core\task\adhoc_task {
         $user = $customdata->user;
 
         foreach ($assessments as $assessment) {
-            local_obu_recalculate_due_for_assessment($user, $assessment, $trace);
+            local_obu_recalculate_due_for_assessment($user, $assessment->id, $trace);
         }
 
         $trace->finished();

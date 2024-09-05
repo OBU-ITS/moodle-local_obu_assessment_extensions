@@ -1,4 +1,5 @@
 <?php
+
 namespace local_obu_assessment_extensions\observers;
 
 // This file is part of Moodle - http://moodle.org/
@@ -34,12 +35,6 @@ class coursework_deadline_changed_observer {
         $cmid = $eventData['objectid'];
         $context = \context_module::instance($cmid);
 
-        //TODO:: This may not be needed on live as event is only triggered by coursework activities
-        if (strtok($context->get_context_name(), ':') != 'Assignment') {
-            return;
-        }
-
-        //courseModule in this case is the activity in the Moodle course(e.g.Coursework)
         $courseModule = get_coursemodule_from_id(null, $cmid, 0, false, MUST_EXIST);
 
         $courseId = $courseModule->course;
@@ -56,7 +51,6 @@ class coursework_deadline_changed_observer {
         $filtered_users = [];
 
         foreach ($users as $user) {
-            // Check if the user has the specified capability in the given context
             if (has_capability($capability, $context, $user->id)) {
                 $filtered_users[] = $user;
             }

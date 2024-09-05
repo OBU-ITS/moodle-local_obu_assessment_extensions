@@ -1,4 +1,5 @@
 <?php
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -32,16 +33,15 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 class adhoc_process_deadline_change extends \core\task\adhoc_task {
     public function execute() {
         $trace = new \text_progress_trace();
-        echo "getting to adhoc taskkkkkkkkkkkkkkkkkk";
 
         $customdata = $this->get_custom_data();
-        $assessment = $customdata->assessment; // Use array syntax
-        $assessmentUsers = $customdata->assessmentUsers; // Use array syntax
+        $assessment = $customdata->assessment;
+        $assessmentUsers = $customdata->assessmentUsers;
 
         foreach ($assessmentUsers as $user) {
             local_obu_recalculate_due_for_assessment($user, $assessment, $trace);
         }
-        die();
+
         $trace->finished();
     }
 }

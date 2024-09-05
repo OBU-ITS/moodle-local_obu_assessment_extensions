@@ -13,6 +13,12 @@ defined('MOODLE_INTERNAL') || die();
 use local_obu_assessment_extensions\observers\coursemod_created_observer;
 use core\event\course_module_created;
 
+if (!is_siteadmin()) {
+    // Redirect to the site homepage
+    redirect(new \moodle_url('/')); // Redirects to the homepage
+    die(); // Ensure the script stops execution after redirect
+}
+
 // Set up the course and module data
 $courseId = 72417; // Replace with a valid course ID
 $moduleId = 1; // Replace with a valid module ID (e.g., 'assign' module)
