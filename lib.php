@@ -23,6 +23,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
+require_once($CFG->dirroot.'/local/obu_assessment_extensions/locallib.php');
+
 function local_obu_assess_ex_recalculate_due_dates_for_user($user, $group) {
     $assessments = local_obu_get_assessments_by_assessment_group($group);
     foreach ($assessments as $assessment) {
