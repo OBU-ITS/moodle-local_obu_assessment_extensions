@@ -23,6 +23,7 @@
  */
 
 require_once($CFG->libdir . "/externallib.php");
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class local_obu_assessment_extensions_external extends external_api {
 
@@ -52,7 +53,7 @@ class local_obu_assessment_extensions_external extends external_api {
 
         // Parameter validation
         self::validate_parameters(
-            self::add_session_parameters(), array(
+            self::award_exceptional_circumstance_parameters(), array(
                 'studentIdNumber' => $studentIdNumber,
                 'extensionDays' => $extensionDays,
                 'assessmentIdNumber' => $assessmentIdNumber,
