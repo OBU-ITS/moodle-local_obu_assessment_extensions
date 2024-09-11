@@ -24,7 +24,7 @@ namespace local_obu_assessment_extensions\task;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-class local_obu_process_exceptional_circumstances extends \core\task\scheduled_task{
+class process_exceptional_circumstances extends \core\task\scheduled_task{
 
     public function get_name() : string {
         return "Process Exceptional Circumstances Task";
