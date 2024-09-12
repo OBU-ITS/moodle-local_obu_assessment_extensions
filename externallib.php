@@ -60,7 +60,7 @@ class local_obu_assessment_extensions_external extends external_api {
             )
         );
 
-        if (!($DB->get_record('user', array('username' => $params['studentIdNumber'])))) {
+        if (!($DB->record_exists('user', array('username' => $params['studentIdNumber'])))) {
             return array('result' => -3);
         }
 
