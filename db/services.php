@@ -28,7 +28,7 @@ $functions = array(
         'methodname'  => 'award_exceptional_circumstance',
         'classpath'   => 'local/obu_assessment_extensions/externallib.php',
         'description' => 'Takes in a student id, assessment id and number of days to extend and processes that information to be stored in a table',
-        'type'        => 'read',
+        'type'        => 'write',
         'capabilities'=> ''
     )
 );

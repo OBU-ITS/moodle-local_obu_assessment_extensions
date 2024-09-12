@@ -40,7 +40,8 @@ class local_obu_assessment_extensions_external extends external_api {
     public static function award_exceptional_circumstance_returns() {
         return new external_single_structure(
             array(
-                'result' => new external_value(PARAM_INT, 'Result')
+                'result' => new external_value(PARAM_INT, 'Result'),
+                'message' => new external_value(PARAM_TEXT, 'Message', false)
             )
         );
     }
@@ -52,7 +53,7 @@ class local_obu_assessment_extensions_external extends external_api {
         self::validate_context(context_system::instance());
 
         // Parameter validation
-        $params = self::validate_parameters(
+        self::validate_parameters(
             self::award_exceptional_circumstance_parameters(), array(
                 'studentIdNumber' => $studentIdNumber,
                 'extensionDays' => $extensionDays,
@@ -60,8 +61,8 @@ class local_obu_assessment_extensions_external extends external_api {
             )
         );
 
-        if (!($DB->record_exists('user', array('username' => $params['studentIdNumber'])))) {
-            return array('result' => -3);
+        if (!($DB->record_exists('user', array('username' => $studentIdNumber)))) {
+            return array('result' => -3, 'message' => 'Cannot find user with username (' . $studentIdNumber . ')');
         }
 
         if ($assessmentIdNumber == null) {
