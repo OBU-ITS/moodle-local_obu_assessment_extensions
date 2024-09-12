@@ -52,7 +52,7 @@ class local_obu_assessment_extensions_external extends external_api {
         self::validate_context(context_system::instance());
 
         // Parameter validation
-        self::validate_parameters(
+        $params = self::validate_parameters(
             self::award_exceptional_circumstance_parameters(), array(
                 'studentIdNumber' => $studentIdNumber,
                 'extensionDays' => $extensionDays,
@@ -60,7 +60,7 @@ class local_obu_assessment_extensions_external extends external_api {
             )
         );
 
-        if (!($DB->get_record('user', array('username' => $studentIdNumber)))) {
+        if (!($DB->get_record('user', array('username' => $params['studentIdNumber'])))) {
             return array('result' => -3);
         }
 
