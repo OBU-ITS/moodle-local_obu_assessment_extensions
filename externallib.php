@@ -48,7 +48,6 @@ class local_obu_assessment_extensions_external extends external_api {
 
     public static function award_exceptional_circumstance($studentidnumber, $extensiondays, $assessmentidnumber=null) {
         global $DB;
-
         // Context validation
         self::validate_context(context_system::instance());
 
@@ -67,6 +66,7 @@ class local_obu_assessment_extensions_external extends external_api {
 
         if ($assessmentidnumber == null) {
             $assessmentgroups = local_obu_get_assessment_groups_by_user($studentidnumber);
+
             foreach ($assessmentgroups as $assessmentgroup){
                 $assessments = local_obu_get_assessments_by_assessment_group($assessmentgroup);
                 foreach ($assessments as $assessment){

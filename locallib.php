@@ -124,7 +124,8 @@ function local_obu_get_assessment_groups_by_user($user): array {
     $groups = array();
     $assessmentGroups = array();
 
-    $groupIds = $DB->get_records('groups_members', array('userid' => $user), '', 'groupid');
+    $userobj = $DB->get_record('user', array('username' => $user), 'id');
+    $groupIds = $DB->get_records('groups_members', array('userid' => $userobj->id), '', 'groupid');
 
     if (empty($groupIds)) {
         return $groups;
@@ -135,7 +136,6 @@ function local_obu_get_assessment_groups_by_user($user): array {
     if (!empty($groupIds)) {
         list($inSql, $params) = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', true);
         $groups = $DB->get_records_select('groups', "id $inSql", $params);
-
         foreach ($groups as $group) {
             if (preg_match("/^\d{4}\..+?_.+?_\d+_\d{6}_\d+_.+?-\d+_\d+_.{1,2}$/", $group->idnumber)) {
                 $assessmentGroups[] = $group;
