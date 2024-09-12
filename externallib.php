@@ -30,9 +30,9 @@ class local_obu_assessment_extensions_external extends external_api {
     public static function award_exceptional_circumstance_parameters() {
         return new external_function_parameters(
             array(
-                'assessmentIdNumber' => new external_value(PARAM_TEXT, 'Assessment ID number', false),
-                'studentIdNumber' => new external_value(PARAM_TEXT, 'Student ID number', true),
-                'extensionDays' => new external_value(PARAM_TEXT, 'Number of days in this extension award', true),
+                'studentidnumber' => new external_value(PARAM_TEXT, 'Student ID number', true),
+                'extensiondays' => new external_value(PARAM_TEXT, 'Number of days in this extension award', true),
+                'assessmentidnumber' => new external_value(PARAM_TEXT, 'Assessment ID number', false),
             )
         );
     }
@@ -46,7 +46,7 @@ class local_obu_assessment_extensions_external extends external_api {
         );
     }
 
-    public static function award_exceptional_circumstance($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+    public static function award_exceptional_circumstance($studentidnumber, $extensiondays, $assessmentidnumber=null) {
         global $DB;
 
         // Context validation
@@ -55,27 +55,27 @@ class local_obu_assessment_extensions_external extends external_api {
         // Parameter validation
         self::validate_parameters(
             self::award_exceptional_circumstance_parameters(), array(
-                'studentIdNumber' => $studentIdNumber,
-                'extensionDays' => $extensionDays,
-                'assessmentIdNumber' => $assessmentIdNumber,
+                'studentidnumber' => $studentidnumber,
+                'extensiondays' => $extensiondays,
+                'assessmentidnumber' => $assessmentidnumber,
             )
         );
 
-        if (!($DB->record_exists('user', array('username' => $studentIdNumber)))) {
-            return array('result' => -3, 'message' => 'Cannot find user with username (' . $studentIdNumber . ')');
+        if (!($DB->record_exists('user', array('username' => $studentidnumber)))) {
+            return array('result' => -3, 'message' => 'Cannot find user with username (' . $studentidnumber . ')');
         }
 
-        if ($assessmentIdNumber == null) {
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($studentIdNumber);
-            foreach ($assessmentGroups as $assessmentGroup){
-                $assessments = local_obu_get_assessments_by_assessment_group($assessmentGroup);
+        if ($assessmentidnumber == null) {
+            $assessmentgroups = local_obu_get_assessment_groups_by_user($studentidnumber);
+            foreach ($assessmentgroups as $assessmentgroup){
+                $assessments = local_obu_get_assessments_by_assessment_group($assessmentgroup);
                 foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessment->idnumber);
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->idnumber);
                 }
             }
             return array('result' => 1);
         }
-        if(local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber)) {
+        if(local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessmentidnumber)) {
             return array('result' => 1);
         }
 
