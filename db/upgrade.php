@@ -47,5 +47,30 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024082201, 'local', 'obu_assessment_extensions');
     }
 
+    if ($oldversion < 2024091104) {
+        $table = new xmldb_table('module_extensions_queue');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('user', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL);
+        $table->add_field('course', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
+        $table->add_field('assessment', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
+        $table->add_field('date', XMLDB_TYPE_CHAR, '10', null, false);
+        $table->add_field('timelimit', XMLDB_TYPE_CHAR, '10', null, false, false, null);
+        $table->add_field('type', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
+        $table->add_field('reason_code', XMLDB_TYPE_CHAR, '10', null, false);
+        $table->add_field('reason_desc', XMLDB_TYPE_CHAR, '100', null, false);
+        $table->add_field('action', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally create table
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2024091104, 'local', 'obu_assessment_extensions');
+    }
+
     return $result;
 }
