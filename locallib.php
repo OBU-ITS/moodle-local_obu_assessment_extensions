@@ -132,7 +132,6 @@ function local_obu_get_assessment_groups_by_user($user): array {
     }
 
     $groupIds = array_keys($groupIds);
-
     if (!empty($groupIds)) {
         list($inSql, $params) = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', true);
         $groups = $DB->get_records_select('groups', "id $inSql", $params);
@@ -142,7 +141,6 @@ function local_obu_get_assessment_groups_by_user($user): array {
             }
         }
     }
-
     return $assessmentGroups;
 }
 
@@ -171,9 +169,11 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
     $sql = "
         SELECT cm.*
         FROM {course_modules} cm
+        JOIN {modules} m ON cm.module = m.id
         WHERE cm.availability LIKE :groupid
+        AND m.name = :modulename
     ";
-    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%'];
+    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'coursework'];
 
     return $DB->get_records_sql($sql, $params);
 }
