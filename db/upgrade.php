@@ -72,5 +72,15 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024091104, 'local', 'obu_assessment_extensions');
     }
 
+    if ($oldversion < 2024091901) {
+        $table = new xmldb_table('module_extensions_queue');
+        $field = new xmldb_field('date', XMLDB_TYPE_CHAR, '16', null, false);
+
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2024091901, 'local', 'obu_assessment_extensions');
+    }
     return $result;
 }

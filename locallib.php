@@ -52,11 +52,12 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
 function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     global $DB;
 
-    $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
+    $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
+    $courseModule = $DB->get_record_sql($sql, ['cmid' => $assessment]);
     $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
 
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($assessment);
-    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->id);
+    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
     $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
 
     if ($newDeadline == 0) {
@@ -181,7 +182,8 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
 function local_obu_get_assessment_groups_by_assessment($assessment) {
     global $DB;
     $assessmentGroups = array();
-    $courseModule = get_coursemodule_from_id(null, $assessment, 0, false, MUST_EXIST);
+    $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
+    $courseModule = $DB->get_record_sql($sql, ['cmid' => $assessment]);
 
     if (!empty($courseModule->availability)) {
         $decodedRestrictions = json_decode($courseModule->availability, true);
@@ -202,13 +204,10 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-
     $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreedgrademarkingdeadline', MUST_EXIST);
     $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->agreed_marking_grade_deadline - 604800; //(unix timestamp value of 7 days)
-
+    $hardDeadline = $courseworkRecord->agreedgrademarkingdeadline - 604800; //(unix timestamp value of 7 days)
     $field = $DB->get_record('user_info_field', ['shortname' => 'service_needs']);
-
     if ($field) {
         $serviceNeedsJson = $DB->get_field('user_info_data', 'data', [
             'userid' => $user->id,
@@ -216,14 +215,12 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         ]);
 
         $serviceNeedsArray = json_decode($serviceNeedsJson, true);
-
         if (is_array($serviceNeedsArray) && isset($serviceNeedsArray[0]['serviceCode'])) {
             $serviceNeeds = $serviceNeedsArray[0]['serviceCode'];
         } else {
             $serviceNeeds = null;
         }
     }
-
     $serviceNeedsMapping = [
         'CWON' => 7,
         'CWTW' => 14,
@@ -237,7 +234,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
             FROM {local_obu_assessment_ext}
             WHERE " . $DB->sql_compare_text('student_id') . " = ?
             AND " . $DB->sql_compare_text('assessment_id') . " = ?",
-            [$user->id, $assessment]);
+            [$user->username, $assessment]);
 
     if ($extensionRecord) {
         if ($extensionRecord->extension_amount != 0 && $extensionRecord->extension_amount != -1) {
@@ -254,6 +251,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
             $newDeadline = $hardDeadline;
         }
     }
+
     local_obu_submit_due_date_change($user, $assessment, $newDeadline);
 }
 

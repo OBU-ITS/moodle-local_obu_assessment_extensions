@@ -24,21 +24,20 @@ namespace local_obu_assessment_extensions\handlers;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use local_obu_assessment_extensions\services\local_obu_process_exceptional_circumstances_service;
+use local_obu_assessment_extensions\services\process_exceptional_circumstances_service;
 use progress_trace;
-class local_obu_process_exceptional_circumstances_handler {
-    private local_obu_process_exceptional_circumstances_service $process_exceptional_circumstances_service;
+class process_exceptional_circumstances_handler {
+    private process_exceptional_circumstances_service $process_exceptional_circumstances_service;
 
     private progress_trace $trace;
 
     public function __construct($trace) {
-        $this->process_exceptional_circumstances_service = local_obu_process_exceptional_circumstances_service::getInstance();
+        $this->process_exceptional_circumstances_service = process_exceptional_circumstances_service::getInstance();
         $this->trace = $trace;
     }
 
     public function handle_process_exceptional_circumstances() {
         $unprocessedExtensions = $this->process_exceptional_circumstances_service->get_unprocessed_extensions();
-
         if (count($unprocessedExtensions) == 0) {
             $this->trace->output("No unprocessed exceptional circumstances found.");
         } else {

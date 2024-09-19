@@ -70,12 +70,12 @@ class local_obu_assessment_extensions_external extends external_api {
             foreach ($assessmentgroups as $assessmentgroup){
                 $assessments = local_obu_get_assessments_by_assessment_group($assessmentgroup);
                 foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->idnumber);
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
                 }
             }
             return array('result' => 1);
-        }
-        if(local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessmentidnumber)) {
+        } elseif ($courseModule = $DB->get_record('course_modules', array('idnumber' => $assessmentidnumber))) {
+            local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
             return array('result' => 1);
         }
 
