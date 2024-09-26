@@ -32,7 +32,7 @@ class local_obu_assessment_extensions_external extends external_api {
             array(
                 'studentidnumber' => new external_value(PARAM_TEXT, 'Student ID number', true),
                 'extensiondays' => new external_value(PARAM_TEXT, 'Number of days in this extension award', true),
-                'assessmentidnumber' => new external_value(PARAM_TEXT, 'Assessment ID number', false),
+                'groupidnumber' => new external_value(PARAM_TEXT, 'Assessment group ID number', false),
             )
         );
     }
@@ -46,7 +46,7 @@ class local_obu_assessment_extensions_external extends external_api {
         );
     }
 
-    public static function award_exceptional_circumstance($studentidnumber, $extensiondays, $assessmentidnumber=null) {
+    public static function award_exceptional_circumstance($studentidnumber, $extensiondays, $groupidnumber=null) {
         global $DB;
         // Context validation
         self::validate_context(context_system::instance());
@@ -56,7 +56,7 @@ class local_obu_assessment_extensions_external extends external_api {
             self::award_exceptional_circumstance_parameters(), array(
                 'studentidnumber' => $studentidnumber,
                 'extensiondays' => $extensiondays,
-                'assessmentidnumber' => $assessmentidnumber,
+                'assessmentidnumber' => $groupidnumber,
             )
         );
 
@@ -64,7 +64,7 @@ class local_obu_assessment_extensions_external extends external_api {
             return array('result' => -3, 'message' => 'Cannot find user with username (' . $studentidnumber . ')');
         }
 
-        if ($assessmentidnumber == null) {
+        if ($groupidnumber == null) {
             $assessmentgroups = local_obu_get_assessment_groups_by_user($studentidnumber);
 
             foreach ($assessmentgroups as $assessmentgroup){
@@ -74,8 +74,16 @@ class local_obu_assessment_extensions_external extends external_api {
                 }
             }
             return array('result' => 1);
-        } elseif ($courseModule = $DB->get_record('course_modules', array('idnumber' => $assessmentidnumber))) {
-            local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
+        } else {
+            $sql = "SELECT * FROM {groups} WHERE idnumber LIKE :groupidnumber";
+            $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => "%$groupidnumber%"));
+            foreach ($groupobjects as $groupobject) {
+                $assessments = local_obu_get_assessments_by_assessment_group($groupobject);
+                foreach ($assessments as $assessment){
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
+                }
+            }
+
             return array('result' => 1);
         }
 
