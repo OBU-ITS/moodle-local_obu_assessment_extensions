@@ -75,8 +75,8 @@ class local_obu_assessment_extensions_external extends external_api {
             }
             return array('result' => 1);
         } else {
-            $sql = "SELECT * FROM {groups} WHERE idnumber LIKE :groupidnumber";
-            $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => "%$groupidnumber%"));
+            $sql = "SELECT * FROM {groups} WHERE idnumber = :groupidnumber";
+            $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => $groupidnumber));
             foreach ($groupobjects as $groupobject) {
                 $assessments = local_obu_get_assessments_by_assessment_group($groupobject);
                 foreach ($assessments as $assessment){
