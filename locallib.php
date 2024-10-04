@@ -204,9 +204,9 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, agreedgrademarkingdeadline', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, initialmarkingdeadline', MUST_EXIST);
     $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->agreedgrademarkingdeadline - 604800; //(unix timestamp value of 7 days)
+    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
     $field = $DB->get_record('user_info_field', ['shortname' => 'service_needs']);
     if ($field) {
         $serviceNeedsJson = $DB->get_field('user_info_data', 'data', [
