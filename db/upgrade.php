@@ -47,14 +47,14 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024082201, 'local', 'obu_assessment_extensions');
     }
 
-    if ($oldversion < 2024091104) {
+    if ($oldversion < 2024100401) {
         $table = new xmldb_table('module_extensions_queue');
 
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('user', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL);
         $table->add_field('course', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
         $table->add_field('assessment', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
-        $table->add_field('date', XMLDB_TYPE_CHAR, '10', null, false);
+        $table->add_field('date', XMLDB_TYPE_CHAR, '16', null, false);
         $table->add_field('timelimit', XMLDB_TYPE_CHAR, '10', null, false, false, null);
         $table->add_field('type', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
         $table->add_field('reason_code', XMLDB_TYPE_CHAR, '10', null, false);
@@ -72,15 +72,5 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024091104, 'local', 'obu_assessment_extensions');
     }
 
-    if ($oldversion < 2024091901) {
-        $table = new xmldb_table('module_extensions_queue');
-        $field = new xmldb_field('date', XMLDB_TYPE_CHAR, '16', null, false);
-
-        if ($dbman->field_exists($table, $field)) {
-            $dbman->change_field_precision($table, $field);
-        }
-
-        upgrade_plugin_savepoint(true, 2024091901, 'local', 'obu_assessment_extensions');
-    }
     return $result;
 }
