@@ -50,8 +50,5 @@ $observers = [
     [
         'eventname' => '\core\event\user_updated',
         'callback'  => 'user_profile_updated_observer::user_profile_updated',
-        'includefile' => '/local/obu_assessment_extensions/observers/user_profile_updated_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
     ],
 ];
