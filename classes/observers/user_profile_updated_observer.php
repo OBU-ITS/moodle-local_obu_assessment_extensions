@@ -38,8 +38,19 @@ class user_profile_updated_observer {
         $oldProfile = $eventData['other']['oldprofile'] ?? [];
         $newProfile = $eventData['other']['profile'] ?? [];
 
-        error_log('Old service_needs: ' . ($oldProfile['service_needs'] ?? 'none'));
-        error_log('New service_needs: ' . ($newProfile['service_needs'] ?? 'none'));
+        // Log the old and new 'service_needs' fields to Moodle's logs
+        $logMessage = 'Old service_needs: ' . ($oldProfile['service_needs'] ?? 'none') . ' | New service_needs: ' . ($newProfile['service_needs'] ?? 'none');
+
+        // Create a custom log event
+        $logevent = \core\event\user_updated::create([
+            'objectid' => $eventData['userid'],
+            'relateduserid' => $eventData['userid'],
+            'context' => \context_system::instance(),
+            'other' => [
+                'info' => $logMessage, // Add your custom message here
+            ]
+        ]);
+        $logevent->trigger();
 
         if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
             $userId = $eventData['userid'];
