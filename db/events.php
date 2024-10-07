@@ -28,24 +28,15 @@ defined('MOODLE_INTERNAL') || die();
 $observers = [
     [
         'eventname' => 'mod_coursework\event\coursework_deadline_changed',
-        'callback'  => 'local_obu_coursework_deadline_changed_observer::coursework_deadline_changed',
-        'includefile' => '/local/obu_assessment_extensions/observers/coursework_deadline_changed_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
+        'callback'  => 'coursework_deadline_changed_observer::coursework_deadline_changed',
     ],
     [
         'eventname' => '\core\event\course_module_updated',
-        'callback'  => 'local_obu_coursemod_access_restriction_changed_observer::coursemod_access_restriction_changed',
-        'includefile' => '/local/obu_assessment_extensions/observers/coursemod_access_restriction_changed_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
+        'callback'  => 'coursemod_access_restriction_changed_observer::coursemod_access_restriction_changed',
     ],
     [
         'eventname' => '\core\event\course_module_created',
-        'callback'  => 'local_obu_coursemod_created_observer::coursemod_created',
-        'includefile' => '/local/obu_assessment_extensions/observers/coursemod_created_observer.php',
-        'priority'    => 1000,
-        'internal'    => false,
+        'callback'  => 'coursemod_created_observer::coursemod_created',
     ],
     [
         'eventname' => '\core\event\user_updated',

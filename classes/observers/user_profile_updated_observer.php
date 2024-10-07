@@ -38,6 +38,9 @@ class user_profile_updated_observer {
         $oldProfile = $eventData['other']['oldprofile'] ?? [];
         $newProfile = $eventData['other']['profile'] ?? [];
 
+        error_log('Old service_needs: ' . ($oldProfile['service_needs'] ?? 'none'));
+        error_log('New service_needs: ' . ($newProfile['service_needs'] ?? 'none'));
+
         if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
             $userId = $eventData['userid'];
             $user = \core_user::get_user($userId);
