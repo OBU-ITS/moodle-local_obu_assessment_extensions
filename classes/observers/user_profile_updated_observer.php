@@ -38,6 +38,10 @@ class user_profile_updated_observer {
         $oldProfile = $eventData['other']['oldprofile'] ?? [];
         $newProfile = $eventData['other']['profile'] ?? [];
 
+        //TODO::retrieve user info from table using event userid and check 'extensions' (weeks of extension to grant).
+        // if starts with * then it is updated so set it back to not having
+        // a star and do the rest of the code.
+
         if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
             $userId = $eventData['userid'];
             $user = \core_user::get_user($userId);

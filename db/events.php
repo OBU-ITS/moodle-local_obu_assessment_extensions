@@ -27,17 +27,13 @@ defined('MOODLE_INTERNAL') || die();
 
 $observers = [
     [
-        'eventname' => 'mod_coursework\event\coursework_deadline_changed',
-        'callback'  => 'coursework_deadline_changed_observer::coursework_deadline_changed',
+        'eventname' => '\mod_coursework\event\coursework_settings_updated',
+        'callback'  => 'coursemod_access_restriction_or_deadline_changed_observer::coursemod_access_restriction_or_deadline_changed',
     ],
-    [
-        'eventname' => '\core\event\course_module_updated',
-        'callback'  => 'coursemod_access_restriction_changed_observer::coursemod_access_restriction_changed',
-    ],
-    [
-        'eventname' => '\core\event\course_module_created',
-        'callback'  => 'coursemod_created_observer::coursemod_created',
-    ],
+//    [
+//        'eventname' => '\core\event\course_module_created',
+//        'callback'  => 'coursemod_created_observer::coursemod_created',
+//    ],
     [
         'eventname' => '\core\event\user_updated',
         'callback'  => 'user_profile_updated_observer::user_profile_updated',
