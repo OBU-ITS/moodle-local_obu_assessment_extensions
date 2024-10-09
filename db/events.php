@@ -39,7 +39,7 @@ $observers = [
         'callback'  => 'coursemod_created_observer::coursemod_created',
     ],
     [
-        'eventname' => '\core\event\user_info_field_updated',
+        'eventname' => '\core\event\user_updated',
         'callback'  => 'user_profile_updated_observer::user_profile_updated',
     ],
 ];

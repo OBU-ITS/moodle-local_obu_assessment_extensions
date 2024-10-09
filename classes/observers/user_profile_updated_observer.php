@@ -32,12 +32,13 @@ global $CFG;
 require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class user_profile_updated_observer {
-    public static function user_profile_updated(\core\event\user_info_field_updated $event) {
+    public static function user_profile_updated(\core\event\user_updated $event) {
         $eventData = $event->get_data();
 
-        $updatedFieldName = $eventData['other']['shortname'];
+        $oldProfile = $eventData['other']['oldprofile'] ?? [];
+        $newProfile = $eventData['other']['profile'] ?? [];
 
-        if ($updatedFieldName == 'service_needs') {
+        if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
             $userId = $eventData['userid'];
             $user = \core_user::get_user($userId);
 
