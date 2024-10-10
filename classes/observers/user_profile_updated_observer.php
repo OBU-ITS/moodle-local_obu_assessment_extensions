@@ -33,16 +33,19 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class user_profile_updated_observer {
     public static function user_profile_updated(\core\event\user_updated $event) {
+        global $DB;
         $eventData = $event->get_data();
+        $userId = $eventData['objectid'];
 
-        $oldProfile = $eventData['other']['oldprofile'] ?? [];
-        $newProfile = $eventData['other']['profile'] ?? [];
+        $sql = "SELECT uid.id, uid.data
+        FROM {user_info_data} uid
+        JOIN {user_info_field} uif ON uid.fieldid = uif.id
+        WHERE uid.userid = :userid
+        AND uif.shortname = 'ilp'";
 
-        //TODO::retrieve user info from table using event userid and check 'extensions' (weeks of extension to grant).
-        // if starts with * then it is updated so set it back to not having
-        // a star and do the rest of the code.
+        $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
 
-        if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
+        if ($userFields && strpos($userFields->data, '*') === 0) {
             $userId = $eventData['userid'];
             $user = \core_user::get_user($userId);
 
@@ -57,6 +60,12 @@ class user_profile_updated_observer {
             $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
             $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
             \core\task\manager::queue_adhoc_task($task);
+
+            $updatedIsp = ltrim($userFields->data, '*');
+            $updatedRecord = new \stdClass();
+            $updatedRecord->id = $userFields->id;
+            $updatedRecord->data = $updatedIsp;
+            $DB->update_record('user_info_data', $updatedRecord);
         }
     }
 }
