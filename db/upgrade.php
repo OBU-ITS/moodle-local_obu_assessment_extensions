@@ -69,7 +69,7 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
             $dbman->create_table($table);
         }
 
-        upgrade_plugin_savepoint(true, 2024091104, 'local', 'obu_assessment_extensions');
+        upgrade_plugin_savepoint(true, 2024101101, 'local', 'obu_assessment_extensions');
     }
 
     return $result;
