@@ -171,7 +171,7 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
         SELECT cm.*
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id
-        WHERE JSON_CONTAINS(cm.availability, JSON_OBJECT('id', :groupid), '$.c')
+        WHERE JSON_CONTAINS(cm.availability, JSON_OBJECT('id', :groupid))
         AND m.name = :modulename
     ";
     //TODO:: Change to 'coursework' when done testing
