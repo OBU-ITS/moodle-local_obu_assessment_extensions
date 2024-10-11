@@ -41,7 +41,7 @@ class user_profile_updated_observer {
         FROM {user_info_data} uid
         JOIN {user_info_field} uif ON uid.fieldid = uif.id
         WHERE uid.userid = :userid
-        AND uif.shortname = 'ilp'";
+        AND uif.shortname = 'extensions'";
 
         $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
 
