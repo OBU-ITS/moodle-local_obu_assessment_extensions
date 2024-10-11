@@ -177,7 +177,7 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
     //TODO:: Change to 'coursework' when done testing
 //    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assignment'];
     //TODO:;remove this after testing and uncomment above, revert sql changes
-    $params = ['groupid' => $assessmentGroup->id];
+    $params = ['groupid' => $assessmentGroup->id, 'modulename' => 'assignment'];
     return $DB->get_records_sql($sql, $params);
 }
 
