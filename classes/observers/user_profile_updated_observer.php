@@ -49,7 +49,7 @@ class user_profile_updated_observer {
 
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($userId);
+            $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
             $assessments = array();
             //TODO:: Remove this stuff whehn done testing
             var_dump($assessmentGroups);
