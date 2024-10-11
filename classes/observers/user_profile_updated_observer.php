@@ -45,10 +45,13 @@ class user_profile_updated_observer {
 
         $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
 
+
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
 
             $assessmentGroups = local_obu_get_assessment_groups_by_user($userId);
+            var_dump($assessmentGroups);
+            die();
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {

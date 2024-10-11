@@ -6,14 +6,12 @@
 namespace local_obu_assessment_extensions\test;
 global $CFG;
 
-require_once(__DIR__ . '/../../../config.php');  // Include Moodle's config.php file
-require_once($CFG->dirroot . '/local/obu_assessment_extensions/externallib.php');
-require_once($CFG->dirroot . '/local/obu_assessment_extensions/classes/task/process_exceptional_circumstances.php');
+require_once(__DIR__ . '/../../../config.php'); // Adjust the path as necessary
 
 defined('MOODLE_INTERNAL') || die();
 
-use core\check\result;
-use local_obu_assessment_extensions_external;
+use local_obu_assessment_extensions\observers\user_profile_updated_observer;
+use core\event\user_updated;
 
 if (!is_siteadmin()) {
     // Redirect to the site homepage
@@ -21,11 +19,5 @@ if (!is_siteadmin()) {
     die(); // Ensure the script stops execution after redirect
 }
 
-//$result = local_obu_assessment_extensions_external::award_exceptional_circumstance('19017277', 5, 'TESTCOURSEWORK');
-//echo "done with result: " . var_dump($result);
-
-//$task = new \local_obu_assessment_extensions\task\process_exceptional_circumstances();
-//$task->execute();
-
-//echo "Task executed successfully.";
-//die();
+$event = \core\event\user_updated::create_from_userid(190187);
+user_profile_updated_observer::user_profile_updated($event);
