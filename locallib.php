@@ -171,12 +171,13 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
         SELECT cm.*
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id
-        WHERE cm.availability LIKE :groupid
+        WHERE JSON_CONTAINS(cm.availability, JSON_OBJECT('id', :groupid), '$.c')
         AND m.name = :modulename
     ";
     //TODO:: Change to 'coursework' when done testing
-    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assignment'];
-
+//    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assignment'];
+    //TODO:;remove this after testing and uncomment above, revert sql changes
+    $params = ['groupid' => $assessmentGroup->id];
     return $DB->get_records_sql($sql, $params);
 }
 
