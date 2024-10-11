@@ -18,6 +18,7 @@ if (!is_siteadmin()) {
     redirect(new \moodle_url('/')); // Redirects to the homepage
     die(); // Ensure the script stops execution after redirect
 }
+$userid = required_param('userid', PARAM_INT);
 
-$event = \core\event\user_updated::create_from_userid(190187);
+$event = \core\event\user_updated::create_from_userid($userid);
 user_profile_updated_observer::user_profile_updated($event);
