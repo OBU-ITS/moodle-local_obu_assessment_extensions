@@ -165,19 +165,32 @@ function local_obu_get_users_by_assessment_group($assessmentGroup): array {
 }
 
 function local_obu_get_assessments_by_assessment_group($assessmentGroup): array {
+//    global $DB;
+//
+//    $sql = "
+//        SELECT cm.*
+//        FROM {course_modules} cm
+//        JOIN {modules} m ON cm.module = m.id
+//        WHERE cm.availability LIKE :groupid
+//        AND m.name = :modulename
+//    ";
+//    //TODO:: Change to 'coursework' when done testing
+//    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assignment'];
+//
+//    return $DB->get_records_sql($sql, $params);
     global $DB;
 
     $sql = "
-        SELECT cm.*
-        FROM {course_modules} cm
-        JOIN {modules} m ON cm.module = m.id
-        WHERE JSON_CONTAINS(cm.availability, JSON_OBJECT('id', :groupid))
-        AND m.name = :modulename
-    ";
-    //TODO:: Change to 'coursework' when done testing
-//    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assignment'];
-    //TODO:;remove this after testing and uncomment above, revert sql changes
-    $params = ['groupid' => $assessmentGroup->id, 'modulename' => 'assignment'];
+    SELECT cm.*
+    FROM {course_modules} cm
+    JOIN {modules} m ON cm.module = m.id
+    WHERE " . $DB->sql_like('cm.availability', ':groupid') . "
+    AND m.name = :modulename
+";
+
+    $groupidquery = $DB->sql_like_escape('%"id":'.$assessmentGroup->id.'%');
+
+    $params = ['groupid' => $groupidquery, 'modulename' => 'coursework'];
     return $DB->get_records_sql($sql, $params);
 }
 
