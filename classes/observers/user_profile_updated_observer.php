@@ -51,7 +51,8 @@ class user_profile_updated_observer {
             $user = \core_user::get_user($userId);
             $assessmentGroups = local_obu_get_assessment_groups_by_user($userId);
             $assessments = array();
-
+            //TODO:: Remove this stuff whehn done testing
+            var_dump($assessmentGroups);
             foreach ($assessmentGroups as $group) {
                 $groupAssessments = local_obu_get_assessments_by_assessment_group($group);
                 $assessments = array_merge($assessments, $groupAssessments);
