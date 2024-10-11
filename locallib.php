@@ -174,7 +174,8 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
-    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'coursework'];
+    //TODO:: Change to 'coursework' when done testing
+    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assignment'];
 
     return $DB->get_records_sql($sql, $params);
 }
@@ -204,30 +205,21 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, initialmarkingdeadline', MUST_EXIST);
-    $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
-    $field = $DB->get_record('user_info_field', ['shortname' => 'service_needs']);
-    if ($field) {
-        $serviceNeedsJson = $DB->get_field('user_info_data', 'data', [
-            'userid' => $user->id,
-            'fieldid' => $field->id,
-        ]);
+    //$courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, initialmarkingdeadline', MUST_EXIST);
+    //TODO: remove hard coded deadlines + uncomment normal code
+    $deadline = 1733414400;
+    $hardDeadline = 1735660800;
+//    $deadline = $courseworkRecord->deadline;
+//    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
 
-        $serviceNeedsArray = json_decode($serviceNeedsJson, true);
-        if (is_array($serviceNeedsArray) && isset($serviceNeedsArray[0]['serviceCode'])) {
-            $serviceNeeds = $serviceNeedsArray[0]['serviceCode'];
-        } else {
-            $serviceNeeds = null;
-        }
-    }
-    $serviceNeedsMapping = [
-        'CWON' => 7,
-        'CWTW' => 14,
-        'CWTH' => 21,
-        'CWFO' => 28,
-    ];
-    $userServiceNeeds = $serviceNeedsMapping[$serviceNeeds] ?? 0;
+    $sql = "SELECT uid.data
+        FROM {user_info_data} uid
+        JOIN {user_info_field} uif ON uid.fieldid = uif.id
+        WHERE uid.userid = :userid
+        AND uif.shortname = 'extensions'";
+
+    $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
+    $userServiceNeeds = $userExtensionWeeks * 7;
 
     $extensionRecord = $DB->get_record_sql(
         "SELECT *
