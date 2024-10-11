@@ -44,7 +44,8 @@ class user_profile_updated_observer {
         AND uif.shortname = 'extensions'";
 
         $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
-
+        //TODO:: Remove this stuff whehn done testing
+        var_dump($userFields);
 
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
