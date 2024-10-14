@@ -174,8 +174,8 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
-    //TODO:: Change to 'coursework' when done testing
-    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'assign'];
+
+    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'coursework'];
 
     return $DB->get_records_sql($sql, $params);
 }
@@ -205,12 +205,10 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    //$courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, initialmarkingdeadline', MUST_EXIST);
-    //TODO: remove hard coded deadlines + uncomment normal code
-    $deadline = 1733414400;
-    $hardDeadline = 1735660800;
-//    $deadline = $courseworkRecord->deadline;
-//    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, initialmarkingdeadline', MUST_EXIST);
+
+    $deadline = $courseworkRecord->deadline;
+    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid

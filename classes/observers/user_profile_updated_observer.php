@@ -44,22 +44,17 @@ class user_profile_updated_observer {
         AND uif.shortname = 'extensions'";
 
         $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
-        //TODO:: Remove this stuff whehn done testing
-        var_dump($userFields);
 
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
             $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
             $assessments = array();
-            //TODO:: Remove this stuff whehn done testing
-            var_dump($assessmentGroups);
+
             foreach ($assessmentGroups as $group) {
                 $groupAssessments = local_obu_get_assessments_by_assessment_group($group);
                 $assessments = array_merge($assessments, $groupAssessments);
             }
-            //TODO:: Remove this stuff whehn done testing
-            var_dump($assessments);
-            die();
+
             $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
             $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
             \core\task\manager::queue_adhoc_task($task);
