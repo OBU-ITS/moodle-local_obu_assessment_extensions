@@ -23,12 +23,12 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2024101401;
+$plugin->version = 2024091101;
 $plugin->requires = 2012120301;
 $plugin->component = 'local_obu_assessment_extensions';
 $plugin->maturity = MATURITY_STABLE;
 
-$plugin->release = 'v0.0.4';
+$plugin->release = 'v0.0.3';
 $plugin->dependencies = array(
 
 );
