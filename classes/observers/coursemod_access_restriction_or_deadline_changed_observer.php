@@ -94,7 +94,7 @@ class coursemod_access_restriction_or_deadline_changed_observer {
         $trace->output("Filtered Users: " . count($courseModuleUsers));
 
         $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
-        $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
+        $task->set_custom_data(['assessment' => $objectid, 'assessmentUsers' => $courseModuleUsers]);
 
         $trace->output("Task created");
 
