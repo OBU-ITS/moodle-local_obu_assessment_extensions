@@ -39,7 +39,7 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
 
     $extension = new stdClass();
     $extension->student_id   = $studentIdNumber;
-    $extension->assessment_id    = $assessmentIdNumber;
+    $extension->assessment_id    = $assessmentIdNumber; // course module id
     $extension->extension_amount = $extensionDays;
     $extension->is_processed = 0;
     $extension->timestamp = time();
@@ -205,7 +205,10 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
 function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
     global $DB;
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $assessment), 'deadline, initialmarkingdeadline', MUST_EXIST);
+
+    // GET course module record
+    $coursemodule = $DB->get_record('course_modules', array('id' => $assessment), 'instance', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
 
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
