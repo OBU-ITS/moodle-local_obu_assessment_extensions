@@ -1,6 +1,6 @@
 <?php
 //**
-//  Example Url: /local/obu_assessment_extensions/test/coursework_settings_updated_test.php?$objectid=208&desctype1
+//  Example Url: /local/obu_assessment_extensions/test/coursework_settings_updated_test.php?objectid=208&desctype=1
 //  */
 
 namespace local_obu_assessment_extensions\test;

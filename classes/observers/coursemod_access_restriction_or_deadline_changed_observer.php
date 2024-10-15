@@ -39,7 +39,7 @@ class coursemod_access_restriction_or_deadline_changed_observer {
         $objectid = $eventData['objectid'];
 
         $trace = new \null_progress_trace();
-        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription)
+        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription);
     }
 
     public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription){
