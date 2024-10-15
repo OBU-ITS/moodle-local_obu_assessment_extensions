@@ -71,7 +71,7 @@ class coursemod_access_restriction_or_deadline_changed_observer {
         $trace->output("Users on Course: " . count($users));
 
         $modinfo = get_fast_modinfo($courseModule->course);
-        $cm_info = $modinfo->get_cm($courseModule->id);
+        $cm_info = $modinfo->get_cm($objectid);
 
         $info = new \core_availability\info_module($cm_info);
         $courseModuleUsers = $info->filter_user_list($users);
