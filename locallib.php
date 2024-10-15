@@ -199,16 +199,26 @@ function local_obu_get_assessment_groups_by_assessment($assessment) {
     $courseModule = $DB->get_record_sql($sql, ['cmid' => $assessment]);
 
     if (!empty($courseModule->availability)) {
-        $decodedRestrictions = json_decode($courseModule->availability, true);
 
-        if (!empty($decodedRestrictions['c'])) {
-            foreach ($decodedRestrictions['c'] as $condition) {
-                if ($condition['type'] === 'group' && !empty($condition['id'])) {
-                    $group = $DB->get_record('groups', array('id' => $condition['id']), '*', MUST_EXIST);
-                    $assessmentGroups[] = $group;
-                }
-            }
+        $pattern = '/"group","id":(\d+)/';
+        preg_match_all($pattern, $courseModule->availability, $matches);
+        $groupids = $matches[1];
+
+        foreach ($groupids as $groupid){
+            $group = $DB->get_record('groups', array('id' => $groupid), '*', IGNORE_MISSING);
+            $assessmentGroups[] = $group;
         }
+
+//        $decodedRestrictions = json_decode($courseModule->availability, true);
+//
+//        if (!empty($decodedRestrictions['c'])) {
+//            foreach ($decodedRestrictions['c'] as $condition) {
+//                if ($condition['type'] === 'group' && !empty($condition['id'])) {
+//                    $group = $DB->get_record('groups', array('id' => $condition['id']), '*', MUST_EXIST);
+//                    $assessmentGroups[] = $group;
+//                }
+//            }
+//        }
     }
 
     return $assessmentGroups;
