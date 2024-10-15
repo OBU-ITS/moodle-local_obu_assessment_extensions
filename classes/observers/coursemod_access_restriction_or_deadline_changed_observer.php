@@ -71,30 +71,34 @@ class coursemod_access_restriction_or_deadline_changed_observer {
         $trace->output("Users on Course: " . count($users));
 
         $modinfo = get_fast_modinfo($courseModule->course);
-        var_dump($modinfo);
 
-        $cm_info = $modinfo->get_cm($courseModule->id);
+        $courseModuleUsers = array();
+        try {
+            $cm_info = $modinfo->get_cm($courseModule->id);
+            $info = new \core_availability\info_module($cm_info);
+            $courseModuleUsers = $info->filter_user_list($users);
+        }
+        catch (\moodle_exception $e) {
+            $trace->output("Unable to use availablity API: " . $e->errorcode);
+            $pattern = '/"group","id":(\d+)/';
+            preg_match_all($pattern, $newRestrictions, $matches);
+            $groups = $matches[1];
 
-        $info = new \core_availability\info_module($cm_info);
-        $courseModuleUsers = $info->filter_user_list($users);
+            foreach ($groups as $group){
+                $groupUsers = local_obu_get_users_by_assessment_group($group);
+                $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
+            }
+        }
+
         $trace->output("Filtered Users: " . count($courseModuleUsers));
-
-//        $decodedRestrictions = json_decode($newRestrictions, true);
-//        $groups = local_obu_get_groups_from_access_restrictions($decodedRestrictions);
-//        $courseModuleUsers = array();
-//
-//        foreach ($groups as $group){
-//            $groupUsers = local_obu_get_users_by_assessment_group($group);
-//            $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
-//        }
 
         $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
         $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
 
-        var_dump($task);
+        $trace->output("Task created");
 
         \core\task\manager::queue_adhoc_task($task);
 
-        $trace->output("Task created");
+        $trace->output("Task queued");
     }
 }
