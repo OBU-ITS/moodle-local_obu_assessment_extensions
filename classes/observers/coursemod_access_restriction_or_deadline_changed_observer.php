@@ -58,7 +58,7 @@ class coursemod_access_restriction_or_deadline_changed_observer {
 
         $cmid = $DB->get_record_sql($sql, ['objectid' => $objectid]);
 
-        if(!($courseModule = get_coursemodule_from_id('coursework', $cmid, 0, false, MUST_EXIST))) {
+        if(!($courseModule = get_coursemodule_from_id('coursework', $cmid->id, 0, false, MUST_EXIST))) {
             $trace->output("No courseModule found");
             $trace->output("ObjectId: $objectid");
         }
