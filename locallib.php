@@ -49,7 +49,7 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
+function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \progress_trace $trace = null) {
     global $DB;
 
     $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
@@ -117,7 +117,14 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline) {
     $dueDateChange->action = $action;
     $dueDateChange->timecreated = time();
 
-    $DB->insert_record('module_extensions_queue', $dueDateChange);
+
+
+    try {
+        $DB->insert_record('module_extensions_queue', $dueDateChange);
+    }
+    catch (\moodle_exception $e) {
+        $trace->output($e->getTraceAsString());
+    }
 }
 
 function local_obu_get_assessment_groups_by_user($user): array {
@@ -245,7 +252,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         }
     }
 
-    local_obu_submit_due_date_change($user, $assessment, $newDeadline);
+    local_obu_submit_due_date_change($user, $assessment, $newDeadline, $trace);
 }
 
 function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
