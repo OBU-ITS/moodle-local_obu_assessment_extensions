@@ -123,7 +123,12 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \pro
         $DB->insert_record('module_extensions_queue', $dueDateChange);
     }
     catch (\moodle_exception $e) {
+        $trace->output($e->getMessage());
+        $trace->output($e->getFile());
         $trace->output($e->getTraceAsString());
+        $trace->output($e->debuginfo);
+
+        throw new \moodle_exception("Error storing module extensions queue");
     }
 }
 
