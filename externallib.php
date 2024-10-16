@@ -56,7 +56,7 @@ class local_obu_assessment_extensions_external extends external_api {
             self::award_exceptional_circumstance_parameters(), array(
                 'studentidnumber' => $studentidnumber,
                 'extensiondays' => $extensiondays,
-                'assessmentidnumber' => $groupidnumber,
+                'groupidnumber' => $groupidnumber,
             )
         );
 
