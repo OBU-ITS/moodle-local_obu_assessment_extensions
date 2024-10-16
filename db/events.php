@@ -28,7 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 $observers = [
     [
         'eventname' => '\mod_coursework\event\coursework_settings_updated',
-        'callback'  => 'coursemod_access_restriction_or_deadline_changed_observer::coursemod_access_restriction_or_deadline_changed',
+        'callback'  => '\local_obu_assessment_extensions\observers\coursemod_access_restriction_or_deadline_changed_observer::coursemod_access_restriction_or_deadline_changed',
     ],
 //    [
 //        'eventname' => '\core\event\course_module_created',
@@ -36,6 +36,6 @@ $observers = [
 //    ],
     [
         'eventname' => '\core\event\user_updated',
-        'callback'  => 'user_profile_updated_observer::user_profile_updated',
+        'callback'  => '\local_obu_assessment_extensions\observers\user_profile_updated_observer::user_profile_updated',
     ],
 ];
