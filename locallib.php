@@ -117,8 +117,6 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \pro
     $dueDateChange->action = $action;
     $dueDateChange->timecreated = time();
 
-
-
     try {
         $DB->insert_record('module_extensions_queue', $dueDateChange);
     }
@@ -192,11 +190,11 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
     return $DB->get_records_sql($sql, $params);
 }
 
-function local_obu_get_assessment_groups_by_assessment($assessment) {
+function local_obu_get_assessment_groups_by_assessment($courseModuleId) {
     global $DB;
     $assessmentGroups = array();
     $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
-    $courseModule = $DB->get_record_sql($sql, ['cmid' => $assessment]);
+    $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
 
     if (!empty($courseModule->availability)) {
 

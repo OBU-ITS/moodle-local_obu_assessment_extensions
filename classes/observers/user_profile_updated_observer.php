@@ -33,9 +33,14 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class user_profile_updated_observer {
     public static function user_profile_updated(\core\event\user_updated $event) {
+        $userId = $event->objectid;
+
+        $trace = new \null_progress_trace();
+        self::user_profile_updated_internal($trace, $userId);
+    }
+
+    public static function user_profile_updated_internal(\progress_trace $trace, $userId) {
         global $DB;
-        $eventData = $event->get_data();
-        $userId = $eventData['objectid'];
 
         $sql = "SELECT uid.id, uid.data
         FROM {user_info_data} uid
@@ -43,11 +48,16 @@ class user_profile_updated_observer {
         WHERE uid.userid = :userid
         AND uif.shortname = 'extensions'";
 
+        $trace->output("SQL: $sql");
+
         $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
+        $trace->output("Extensions Data: $userFields->data");
 
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
             $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
+            var_dump($assessmentGroups);
+
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {
