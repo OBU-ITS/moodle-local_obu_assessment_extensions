@@ -42,7 +42,7 @@ class process_exceptional_circumstances_service {
     public function get_unprocessed_extensions() {
         global $DB;
 
-        $sql = "SELECT * FROM {local_obu_assessment_ext} WHERE is_processed = 0 ORDER BY timestamp ASC";
+        $sql = "SELECT * FROM {local_obu_assessment_ext} WHERE is_processed = 0 ORDER BY id ASC";
 
         return $DB->get_records_sql($sql);
     }
