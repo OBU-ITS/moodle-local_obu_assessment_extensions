@@ -73,7 +73,6 @@ class local_obu_assessment_extensions_external extends external_api {
                     local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
                 }
             }
-            return array('result' => 1);
         } else {
             $sql = "SELECT * FROM {groups} WHERE idnumber = :groupidnumber";
             $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => $groupidnumber));
@@ -83,30 +82,7 @@ class local_obu_assessment_extensions_external extends external_api {
                     local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
                 }
             }
-
-            return array('result' => 1);
         }
-
-        return array('result' => -9);
-    }
-
-    public static function get_settings_parameters() {
-        return new external_function_parameters(
-            array(
-            )
-        );
-    }
-
-    public static function get_settings_returns() {
-        return new external_single_structure(
-            array(
-                'enabled' => new external_value(PARAM_BOOL, 'Enabled')
-            )
-        );
-    }
-
-    public static function get_settings(){
-        $enabled = get_config('local_obu_assessment_extensions', 'enable');
-        return array('enabled' => $enabled);
+        return array('result' => 1);
     }
 }
