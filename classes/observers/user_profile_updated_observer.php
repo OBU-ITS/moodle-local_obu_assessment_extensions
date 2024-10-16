@@ -56,7 +56,6 @@ class user_profile_updated_observer {
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
             $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
-            var_dump($assessmentGroups);
 
             $assessments = array();
 
@@ -64,16 +63,20 @@ class user_profile_updated_observer {
                 $groupAssessments = local_obu_get_assessments_by_assessment_group($group);
                 $assessments = array_merge($assessments, $groupAssessments);
             }
+            var_dump($assessments);
 
             $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
             $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
             \core\task\manager::queue_adhoc_task($task);
+            $trace->output("Task created");
 
             $updatedIsp = ltrim($userFields->data, '*');
+            $trace->output("Updated ISP: $updatedIsp");
             $updatedRecord = new \stdClass();
             $updatedRecord->id = $userFields->id;
             $updatedRecord->data = $updatedIsp;
             $DB->update_record('user_info_data', $updatedRecord);
+            $trace->output("Complete");
         }
     }
 }
