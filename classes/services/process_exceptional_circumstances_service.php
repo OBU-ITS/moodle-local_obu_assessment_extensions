@@ -23,6 +23,11 @@ namespace local_obu_assessment_extensions\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
+
 class process_exceptional_circumstances_service {
 
     private static ?process_exceptional_circumstances_service $instance = null;
