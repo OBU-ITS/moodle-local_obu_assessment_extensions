@@ -240,7 +240,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
-    $userServiceNeeds = $userExtensionWeeks * 7;
+    $userServiceNeeds = $userExtensionWeeks->data * 7;
 
     $extensionRecord = $DB->get_record_sql(
         "SELECT *

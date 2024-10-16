@@ -64,7 +64,6 @@ class user_profile_updated_observer {
                 $groupAssessments = local_obu_get_assessments_by_assessment_group($group);
                 $assessments = array_merge($assessments, $groupAssessments);
             }
-            var_dump($assessments);
 
             $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
             $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
