@@ -249,6 +249,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
             WHERE " . $DB->sql_compare_text('student_id') . " = ?
             AND " . $DB->sql_compare_text('assessment_id') . " = ?
             AND is_processed = true
+            AND extension_amount > 0
             ORDER BY id DESC
             LIMIT 1",
             [$user->username, $assessment]);
