@@ -232,6 +232,7 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
 
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
+    $hardDeadline = $hardDeadline < 0 ? $deadline + 2419200 : $hardDeadline; // IF markingDeadline is 0 then set it to 4wks over cw deadline
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -243,10 +244,13 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
     $userServiceNeeds = $userExtensionWeeks->data * 7;
 
     $extensionRecord = $DB->get_record_sql(
-        "SELECT *
+        "SELECT extension_amount
             FROM {local_obu_assessment_ext}
             WHERE " . $DB->sql_compare_text('student_id') . " = ?
-            AND " . $DB->sql_compare_text('assessment_id') . " = ?",
+            AND " . $DB->sql_compare_text('assessment_id') . " = ?
+            AND is_processed = true
+            ORDER BY id DESC
+            LIMIT 1",
             [$user->username, $assessment]);
 
     if ($extensionRecord) {
@@ -263,6 +267,38 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         if ($newDeadline > $hardDeadline) {
             $newDeadline = $hardDeadline;
         }
+    }
+
+    local_obu_submit_due_date_change($user, $assessment, $newDeadline, $trace);
+}
+
+function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($user, $assessment, $extensionAmount, $trace = null) {
+    global $DB;
+
+    // GET course module record
+    $coursemodule = $DB->get_record('course_modules', array('id' => $assessment), 'instance', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
+
+    $deadline = $courseworkRecord->deadline;
+    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
+    $hardDeadline = $hardDeadline < 0 ? $deadline + 2419200 : $hardDeadline; // IF markingDeadline is 0 then set it to 4wks over cw deadline
+
+    $sql = "SELECT uid.data
+        FROM {user_info_data} uid
+        JOIN {user_info_field} uif ON uid.fieldid = uif.id
+        WHERE uid.userid = :userid
+        AND uif.shortname = 'extensions'";
+
+    $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
+    $userServiceNeeds = $userExtensionWeeks->data * 7;
+
+    if ($extensionAmount != 0 && $extensionAmount != -1) {
+        $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionAmount * 24 * 3600);
+        if ($newDeadline > $hardDeadline) {
+            $newDeadline = $hardDeadline;
+        }
+    } else {
+        $newDeadline = $extensionAmount;
     }
 
     local_obu_submit_due_date_change($user, $assessment, $newDeadline, $trace);
