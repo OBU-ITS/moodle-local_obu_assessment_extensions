@@ -31,16 +31,8 @@ $newProfile = [
 ];
 
 // Simulate the event data
-$event = user_updated::create([
-    'context' => \context_user::instance($userId),
-    'objectid' => $userId,
-    'relateduserid' => $userId,
-    'userid' => $userId,
-    'other' => [
-        'oldprofile' => $oldProfile,
-        'profile' => $newProfile,
-    ],
-]);
+$event = user_updated::create_from_userid($userId);
+$event->trigger();
 
 // Trigger the observer manually to simulate the profile update
 echo "Calling user profile updated function from observer <br>";

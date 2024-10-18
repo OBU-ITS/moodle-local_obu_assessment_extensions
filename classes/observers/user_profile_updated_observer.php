@@ -34,15 +34,30 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 class user_profile_updated_observer {
     public static function user_profile_updated(\core\event\user_updated $event) {
         $eventData = $event->get_data();
+        $userId = $eventData['objectid'];
 
-        $oldProfile = $eventData['other']['oldprofile'] ?? [];
-        $newProfile = $eventData['other']['profile'] ?? [];
+        $trace = new \null_progress_trace();
+        self::user_profile_updated_internal($trace, $userId);
+    }
 
-        if (isset($oldProfile['service_needs']) && isset($newProfile['service_needs']) && $oldProfile['service_needs'] !== $newProfile['service_needs']) {
-            $userId = $eventData['userid'];
+    public static function user_profile_updated_internal(\progress_trace $trace, $userId) {
+        global $DB;
+
+        $sql = "SELECT uid.id, uid.data
+        FROM {user_info_data} uid
+        JOIN {user_info_field} uif ON uid.fieldid = uif.id
+        WHERE uid.userid = :userid
+        AND uif.shortname = 'extensions'";
+
+        $trace->output("SQL: $sql");
+
+        $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
+        $trace->output("Extensions Data: $userFields->data");
+
+        if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId);
+            $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
 
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($userId);
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {
@@ -53,6 +68,15 @@ class user_profile_updated_observer {
             $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
             $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
             \core\task\manager::queue_adhoc_task($task);
+            $trace->output("Task created");
+
+            $updatedIsp = ltrim($userFields->data, '*');
+            $trace->output("Updated ISP: $updatedIsp");
+            $updatedRecord = new \stdClass();
+            $updatedRecord->id = $userFields->id;
+            $updatedRecord->data = $updatedIsp;
+            $DB->update_record('user_info_data', $updatedRecord);
+            $trace->output("Complete");
         }
     }
 }

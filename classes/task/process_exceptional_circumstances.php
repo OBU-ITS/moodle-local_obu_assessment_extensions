@@ -33,7 +33,7 @@ class process_exceptional_circumstances extends \core\task\scheduled_task{
     public function execute() {
         $trace = new \text_progress_trace();
 
-        $handler = new \local_obu_assessment_extensions\handlers\local_obu_process_exceptional_circumstances_handler($trace);
+        $handler = new \local_obu_assessment_extensions\handlers\process_exceptional_circumstances_handler($trace);
         $handler->handle_process_exceptional_circumstances();
     }
 }

@@ -23,10 +23,15 @@ namespace local_obu_assessment_extensions\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-class local_obu_process_exceptional_circumstances_service {
+defined('MOODLE_INTERNAL') || die();
 
-    private static ?local_obu_process_exceptional_circumstances_service $instance = null;
-    public static function getInstance() : local_obu_process_exceptional_circumstances_service {
+global $CFG;
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
+
+class process_exceptional_circumstances_service {
+
+    private static ?process_exceptional_circumstances_service $instance = null;
+    public static function getInstance() : process_exceptional_circumstances_service {
         if (self::$instance == null) {
             self::$instance = new self();
         }
@@ -42,24 +47,16 @@ class local_obu_process_exceptional_circumstances_service {
     public function get_unprocessed_extensions() {
         global $DB;
 
-        $sql = "SELECT * FROM {local_obu_assessment_ext} WHERE is_processed = 0";
+        $sql = "SELECT * FROM {local_obu_assessment_ext} WHERE is_processed = 0 ORDER BY id ASC";
 
         return $DB->get_records_sql($sql);
     }
 
     public function process_extensions($unprocessedExtensions) {
         global $DB;
-
         foreach ($unprocessedExtensions as $unprocessedExtension) {
-            $user = $unprocessedExtension->student_id;
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($unprocessedExtension->student_id);
-            foreach ($assessmentGroups as $assessmentGroup) {
-                $assessments = local_obu_get_assessments_by_assessment_group($assessmentGroup);
-                foreach ($assessments as $assessment) {
-                    local_obu_recalculate_due_for_assessment($user , $assessment, $unprocessedExtension->extension_amount);
-                }
-            }
-
+            $user = $DB->get_record('user', array('username' => $unprocessedExtension->student_id), '*', MUST_EXIST);
+            local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($user , $unprocessedExtension->assessment_id, $unprocessedExtension->extension_amount);
             $DB->set_field('local_obu_assessment_ext', 'is_processed', 1, array('id' => $unprocessedExtension->id));
         }
     }

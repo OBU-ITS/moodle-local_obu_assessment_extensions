@@ -30,9 +30,9 @@ class local_obu_assessment_extensions_external extends external_api {
     public static function award_exceptional_circumstance_parameters() {
         return new external_function_parameters(
             array(
-                'assessmentIdNumber' => new external_value(PARAM_TEXT, 'Assessment ID number', false),
-                'studentIdNumber' => new external_value(PARAM_TEXT, 'Student ID number', true),
-                'extensionDays' => new external_value(PARAM_TEXT, 'Number of days in this extension award', true),
+                'studentidnumber' => new external_value(PARAM_TEXT, 'Student ID number', true),
+                'extensiondays' => new external_value(PARAM_TEXT, 'Number of days in this extension award', true),
+                'groupidnumber' => new external_value(PARAM_TEXT, 'Assessment group ID number', false),
             )
         );
     }
@@ -40,64 +40,49 @@ class local_obu_assessment_extensions_external extends external_api {
     public static function award_exceptional_circumstance_returns() {
         return new external_single_structure(
             array(
-                'result' => new external_value(PARAM_INT, 'Result')
+                'result' => new external_value(PARAM_INT, 'Result'),
+                'message' => new external_value(PARAM_TEXT, 'Message', false)
             )
         );
     }
 
-    public static function award_exceptional_circumstance($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+    public static function award_exceptional_circumstance($studentidnumber, $extensiondays, $groupidnumber=null) {
         global $DB;
-
         // Context validation
         self::validate_context(context_system::instance());
 
         // Parameter validation
         self::validate_parameters(
             self::award_exceptional_circumstance_parameters(), array(
-                'studentIdNumber' => $studentIdNumber,
-                'extensionDays' => $extensionDays,
-                'assessmentIdNumber' => $assessmentIdNumber,
+                'studentidnumber' => $studentidnumber,
+                'extensiondays' => $extensiondays,
+                'groupidnumber' => $groupidnumber,
             )
         );
 
-        if (!($DB->get_record('user', array('username' => $studentIdNumber)))) {
-            return array('result' => -3);
+        if (!($DB->record_exists('user', array('username' => $studentidnumber)))) {
+            return array('result' => -3, 'message' => 'Cannot find user with username (' . $studentidnumber . ')');
         }
 
-        if ($assessmentIdNumber == null) {
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($studentIdNumber);
-            foreach ($assessmentGroups as $assessmentGroup){
-                $assessments = local_obu_get_assessments_by_assessment_group($assessmentGroup);
+        if ($groupidnumber == null) {
+            $assessmentgroups = local_obu_get_assessment_groups_by_user($studentidnumber);
+
+            foreach ($assessmentgroups as $assessmentgroup){
+                $assessments = local_obu_get_assessments_by_assessment_group($assessmentgroup);
                 foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessment->idnumber);
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
                 }
             }
-            return array('result' => 1);
+        } else {
+            $sql = "SELECT * FROM {groups} WHERE idnumber = :groupidnumber";
+            $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => $groupidnumber));
+            foreach ($groupobjects as $groupobject) {
+                $assessments = local_obu_get_assessments_by_assessment_group($groupobject);
+                foreach ($assessments as $assessment){
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
+                }
+            }
         }
-        if(local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber)) {
-            return array('result' => 1);
-        }
-
-        return array('result' => -9);
-    }
-
-    public static function get_settings_parameters() {
-        return new external_function_parameters(
-            array(
-            )
-        );
-    }
-
-    public static function get_settings_returns() {
-        return new external_single_structure(
-            array(
-                'enabled' => new external_value(PARAM_BOOL, 'Enabled')
-            )
-        );
-    }
-
-    public static function get_settings(){
-        $enabled = get_config('local_obu_assessment_extensions', 'enable');
-        return array('enabled' => $enabled);
+        return array('result' => 1);
     }
 }
