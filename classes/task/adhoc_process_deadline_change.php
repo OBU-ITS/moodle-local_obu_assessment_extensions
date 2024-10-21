@@ -35,11 +35,11 @@ class adhoc_process_deadline_change extends \core\task\adhoc_task {
         $trace = new \text_progress_trace();
 
         $customdata = $this->get_custom_data();
-        $assessment = $customdata->assessment;
-        $assessmentUsers = $customdata->assessmentUsers;
+        $courseModuleId = $customdata->courseModuleId;
+        $courseModuleUsers = $customdata->courseModuleUsers;
 
-        foreach ($assessmentUsers as $user) {
-            local_obu_recalculate_due_for_assessment($user, $assessment->id, $trace);
+        foreach ($courseModuleUsers as $user) {
+            local_obu_recalculate_due_for_assessment($user, $courseModuleId, $trace);
         }
 
         $trace->finished();

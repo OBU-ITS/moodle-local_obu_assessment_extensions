@@ -36,13 +36,13 @@ class coursemod_access_restriction_or_deadline_changed_observer {
 
         $eventData = $event->get_data();
         $eventDescription = $event->get_description();
-        $objectid = $eventData['objectid'];
+        $courseModuleInstanceId = $eventData['objectid'];
 
         $trace = new \null_progress_trace();
-        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription);
+        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $courseModuleInstanceId, $eventDescription);
     }
 
-    public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription){
+    public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $courseModuleInstanceId, $eventDescription){
         global $DB;
 
         $description = strtolower($eventDescription);
@@ -52,16 +52,16 @@ class coursemod_access_restriction_or_deadline_changed_observer {
             return;
         }
 
-        $sql = "SELECT cm.id 
+        $sql = "SELECT * 
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = :objectid";
+        WHERE cm.instance = :courseModuleInstanceId";
 
-        $cmid = $DB->get_record_sql($sql, ['objectid' => $objectid]);
+        $courseModule = $DB->get_record_sql($sql, ['courseModuleInstanceId' => $courseModuleInstanceId]);
 
-        if(!($courseModule = get_coursemodule_from_id('coursework', $cmid->id, 0, false, MUST_EXIST))) {
+        if(!$courseModule) {
             $trace->output("No courseModule found");
-            $trace->output("ObjectId: $objectid");
+            $trace->output("Course module instance ID: $courseModuleInstanceId");
         }
 
         $newRestrictions = $courseModule->availability;
@@ -83,10 +83,9 @@ class coursemod_access_restriction_or_deadline_changed_observer {
             $trace->output("Unable to use availablity API: " . $e->errorcode);
             $pattern = '/"group","id":(\d+)/';
             preg_match_all($pattern, $newRestrictions, $matches);
-            $groups = $matches[1];
-
-            foreach ($groups as $group){
-                $groupUsers = local_obu_get_users_by_assessment_group($group);
+            $groupIds = $matches[1];
+            foreach ($groupIds as $groupId){
+                $groupUsers = local_obu_get_users_by_assessment_group($groupId);
                 $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
             }
         }
@@ -94,7 +93,7 @@ class coursemod_access_restriction_or_deadline_changed_observer {
         $trace->output("Filtered Users: " . count($courseModuleUsers));
 
         $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
-        $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
+        $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
 
         $trace->output("Task created");
 

@@ -34,12 +34,12 @@ defined('MOODLE_INTERNAL') || die();
  * @return bool True if user added successfully or the user is already a
  * member of the group, false otherwise.
  */
-function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $assessmentIdNumber=null) {
+function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $courseModuleId=null) {
     global $DB;
 
     $extension = new stdClass();
     $extension->student_id   = $studentIdNumber;
-    $extension->assessment_id    = $assessmentIdNumber; // course module id
+    $extension->assessment_id    = $courseModuleId; // course module id
     $extension->extension_amount = $extensionDays;
     $extension->is_processed = 0;
     $extension->timestamp = time();
@@ -49,21 +49,21 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \progress_trace $trace = null) {
+function local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, \progress_trace $trace = null) {
     global $DB;
 
     $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
-    $courseModule = $DB->get_record_sql($sql, ['cmid' => $assessment]);
+    $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
     $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
 
-    $assessmentGroups = local_obu_get_assessment_groups_by_assessment($assessment);
+    $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
     $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
 
-    if ($newDeadline == 0) {
+    if ($temporaryExemption) {
         $conditions = [
             'student_id' => $user->username,
-            'assessment_id' => $assessment,
+            'assessment_id' => $courseModuleId,
             'extension_amount' => 0
         ];
         $existingExtension = $DB->get_record_select(
@@ -74,7 +74,7 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \pro
     } else {
         $conditions = [
             'student_id' => $user->username,
-            'assessment_id' => $assessment,
+            'assessment_id' => $courseModuleId,
         ];
         $existingExtension = $DB->get_record_select(
             'local_obu_assessment_ext',
@@ -83,7 +83,7 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \pro
         );
     }
 
-    if ($newDeadline == 0) {
+    if ($temporaryExemption) {
         $date = "temporary";
         $type = "coursework_temporary_exemption";
         if ($existingExtension){
@@ -91,7 +91,7 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \pro
         } else {
             $action = "insert";
         }
-    } elseif ($newDeadline == -1) {
+    } elseif ($deletion) {
         $date = null;
         $type = "coursework_temporary_exemption";
         $action = "delete";
@@ -130,12 +130,12 @@ function local_obu_submit_due_date_change($user, $assessment, $newDeadline, \pro
     }
 }
 
-function local_obu_get_assessment_groups_by_user($user): array {
+function local_obu_get_assessment_groups_by_user($userIdNumber): array {
     global $DB;
     $groups = array();
     $assessmentGroups = array();
 
-    $userobj = $DB->get_record('user', array('username' => $user), 'id');
+    $userobj = $DB->get_record('user', array('username' => $userIdNumber), 'id');
     $groupIds = $DB->get_records('groups_members', array('userid' => $userobj->id), '', 'groupid');
 
     if (empty($groupIds)) {
@@ -155,10 +155,10 @@ function local_obu_get_assessment_groups_by_user($user): array {
     return $assessmentGroups;
 }
 
-function local_obu_get_users_by_assessment_group($assessmentGroup): array {
+function local_obu_get_users_by_assessment_group($assessmentGroupId): array {
     global $DB;
     $users = array();
-    $userIds = $DB->get_records('groups_members', array('groupid' => $assessmentGroup), '', 'userid');
+    $userIds = $DB->get_records('groups_members', array('groupid' => $assessmentGroupId), '', 'userid');
 
     if (empty($userIds)) {
         return $users;
@@ -223,11 +223,11 @@ function local_obu_get_assessment_groups_by_assessment($courseModuleId) {
 }
 
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
-function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = null) {
+function local_obu_recalculate_due_for_assessment($user, $courseModuleId, $trace = null) {
     global $DB;
 
     // GET course module record
-    $coursemodule = $DB->get_record('course_modules', array('id' => $assessment), 'instance', MUST_EXIST);
+    $coursemodule = $DB->get_record('course_modules', array('id' => $courseModuleId), 'instance', MUST_EXIST);
     $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
 
     $deadline = $courseworkRecord->deadline;
@@ -252,16 +252,18 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
             AND extension_amount > 0
             ORDER BY id DESC
             LIMIT 1",
-            [$user->username, $assessment]);
+            [$user->username, $courseModuleId]);
 
     if ($extensionRecord) {
-        if ($extensionRecord->extension_amount != 0 && $extensionRecord->extension_amount != -1) {
+        if ($extensionRecord->extension_amount == 0) {
+            $temporaryExemption = true;
+        } elseif ($extensionRecord->extension_amount == -1) {
+            $deletion = true;
+        } else {
             $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionRecord->extension_amount * 24 * 3600);
             if ($newDeadline > $hardDeadline) {
                 $newDeadline = $hardDeadline;
             }
-        } else {
-            $newDeadline = $extensionRecord->extension_amount;
         }
     } else {
         $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600);
@@ -270,15 +272,15 @@ function local_obu_recalculate_due_for_assessment($user, $assessment, $trace = n
         }
     }
 
-    local_obu_submit_due_date_change($user, $assessment, $newDeadline, $trace);
+    local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, $trace);
 }
 
-function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($user, $assessment, $extensionAmount, $trace = null) {
+function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($user, $courseModuleId, $extensionAmount, $trace = null) {
     global $DB;
 
     // GET course module record
-    $coursemodule = $DB->get_record('course_modules', array('id' => $assessment), 'instance', MUST_EXIST);
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
+    $courseModule = $DB->get_record('course_modules', array('id' => $courseModuleId), 'instance', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $courseModule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
 
     $deadline = $courseworkRecord->deadline;
     $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
@@ -290,19 +292,21 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($u
         WHERE uid.userid = :userid
         AND uif.shortname = 'extensions'";
 
-    $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
-    $userServiceNeeds = $userExtensionWeeks->data * 7;
+    $userExtensionWeeksRecord = $DB->get_record_sql($sql, ['userid' => $user->id]);
+    $userServiceNeedsDays = $userExtensionWeeksRecord->data * 7;
 
-    if ($extensionAmount != 0 && $extensionAmount != -1) {
-        $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionAmount * 24 * 3600);
+    if ($extensionAmount == 0) {
+        $temporaryExemption = true;
+    } elseif ($extensionAmount == -1) {
+        $deletion = true;
+    } else {
+        $newDeadline = $deadline + ($userServiceNeedsDays * 24 * 3600) + ($extensionAmount * 24 * 3600);
         if ($newDeadline > $hardDeadline) {
             $newDeadline = $hardDeadline;
         }
-    } else {
-        $newDeadline = $extensionAmount;
     }
 
-    local_obu_submit_due_date_change($user, $assessment, $newDeadline, $trace);
+    local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, $trace);
 }
 
 function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {

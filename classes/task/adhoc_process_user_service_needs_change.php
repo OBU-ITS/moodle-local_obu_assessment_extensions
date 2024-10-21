@@ -38,8 +38,8 @@ class adhoc_process_user_service_needs_change extends \core\task\adhoc_task {
         $assessments = $customdata->assessments;
         $user = $customdata->user;
 
-        foreach ($assessments as $assessment) {
-            local_obu_recalculate_due_for_assessment($user, $assessment->id, $trace);
+        foreach ($assessments as $courseModule) {
+            local_obu_recalculate_due_for_assessment($user, $courseModule->id, $trace);
         }
 
         $trace->finished();

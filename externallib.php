@@ -69,8 +69,8 @@ class local_obu_assessment_extensions_external extends external_api {
 
             foreach ($assessmentgroups as $assessmentgroup){
                 $assessments = local_obu_get_assessments_by_assessment_group($assessmentgroup);
-                foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
+                foreach ($assessments as $courseModule){
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
                 }
             }
         } else {
@@ -78,8 +78,8 @@ class local_obu_assessment_extensions_external extends external_api {
             $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => $groupidnumber));
             foreach ($groupobjects as $groupobject) {
                 $assessments = local_obu_get_assessments_by_assessment_group($groupobject);
-                foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
+                foreach ($assessments as $courseModule){
+                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
                 }
             }
         }
