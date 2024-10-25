@@ -41,7 +41,7 @@ class process_exceptional_circumstances_handler {
         if (count($unprocessedExtensions) == 0) {
             $this->trace->output("No unprocessed exceptional circumstances found.");
         } else {
-            $this->process_exceptional_circumstances_service->process_extensions($unprocessedExtensions);
+            $this->process_exceptional_circumstances_service->process_extensions($this->trace, $unprocessedExtensions);
             $this->trace->output("Processed " . count($unprocessedExtensions) . " exceptional circumstance records.");
         }
     }

@@ -47,16 +47,19 @@ class process_exceptional_circumstances_service {
     public function get_unprocessed_extensions() {
         global $DB;
 
-        $sql = "SELECT * FROM {local_obu_assessment_ext} WHERE is_processed = 0 ORDER BY id ASC";
+        $sql = "SELECT id, student_id, assessment_id, extension_amount
+                FROM {local_obu_assessment_ext} 
+                WHERE is_processed = 0 
+                ORDER BY id ASC";
 
         return $DB->get_records_sql($sql);
     }
 
-    public function process_extensions($unprocessedExtensions) {
+    public function process_extensions(\progress_trace $trace, $unprocessedExtensions) {
         global $DB;
         foreach ($unprocessedExtensions as $unprocessedExtension) {
-            $user = $DB->get_record('user', array('username' => $unprocessedExtension->student_id), '*', MUST_EXIST);
-            local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($user , $unprocessedExtension->assessment_id, $unprocessedExtension->extension_amount);
+            $user = $DB->get_record('user', array('username' => $unprocessedExtension->student_id), 'id, username', MUST_EXIST);
+            local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($trace, $user, $unprocessedExtension->assessment_id, $unprocessedExtension->extension_amount);
             $DB->set_field('local_obu_assessment_ext', 'is_processed', 1, array('id' => $unprocessedExtension->id));
         }
     }

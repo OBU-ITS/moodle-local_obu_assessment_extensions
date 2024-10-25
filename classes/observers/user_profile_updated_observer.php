@@ -33,8 +33,7 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class user_profile_updated_observer {
     public static function user_profile_updated(\core\event\user_updated $event) {
-        $eventData = $event->get_data();
-        $userId = $eventData['objectid'];
+        $userId = $event->objectid;
 
         $trace = new \null_progress_trace();
         self::user_profile_updated_internal($trace, $userId);

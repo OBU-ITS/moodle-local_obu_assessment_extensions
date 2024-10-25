@@ -49,7 +49,7 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
-function local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, \progress_trace $trace = null) {
+function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null) {
     global $DB;
 
     $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
@@ -96,7 +96,7 @@ function local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, 
         $type = "coursework_temporary_exemption";
         $action = "delete";
     } else {
-        $date = date('d/m/Y H:i', $newDeadline);
+        $date = $newDeadline;
         $type = "coursework_mitigations";
         if ($existingExtension){
             $action = "update";
@@ -223,7 +223,7 @@ function local_obu_get_assessment_groups_by_assessment($courseModuleId) {
 }
 
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
-function local_obu_recalculate_due_for_assessment($user, $courseModuleId, $trace = null) {
+function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user, $courseModuleId) {
     global $DB;
 
     // GET course module record
@@ -231,8 +231,7 @@ function local_obu_recalculate_due_for_assessment($user, $courseModuleId, $trace
     $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
 
     $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
-    $hardDeadline = $hardDeadline < 0 ? $deadline + 2419200 : $hardDeadline; // IF markingDeadline is 0 then set it to 4wks over cw deadline
+    $hardDeadline = $courseworkRecord->initialmarkingdeadline;
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -241,7 +240,7 @@ function local_obu_recalculate_due_for_assessment($user, $courseModuleId, $trace
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
-    $userServiceNeeds = $userExtensionWeeks->data * 7;
+    $userServiceNeedsDays = $userExtensionWeeks->data * 7;
 
     $extensionRecord = $DB->get_record_sql(
         "SELECT extension_amount
@@ -260,22 +259,46 @@ function local_obu_recalculate_due_for_assessment($user, $courseModuleId, $trace
         } elseif ($extensionRecord->extension_amount == -1) {
             $deletion = true;
         } else {
-            $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600) + ($extensionRecord->extension_amount * 24 * 3600);
-            if ($newDeadline > $hardDeadline) {
-                $newDeadline = $hardDeadline;
-            }
+            $additionalDays = $userServiceNeedsDays + $extensionRecord->extension_amount;
+            $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
         }
     } else {
-        $newDeadline = $deadline + ($userServiceNeeds * 24 * 3600);
-        if ($newDeadline > $hardDeadline) {
-            $newDeadline = $hardDeadline;
-        }
+        $newDeadline = calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
     }
 
-    local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, $trace);
+    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
 
-function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($user, $courseModuleId, $extensionAmount, $trace = null) {
+function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $additionalDays, $initialMarkingDeadlineTimestamp) {
+    $deadlineDate = (new DateTime())->setTimestamp($deadlineTimestamp);
+    $trace->output("Current Deadline: " . $deadlineDate->format('d/m/Y H:i'));
+
+    $newDeadlineDate = clone $deadlineDate;  // Clone to avoid modifying original
+    $newDeadlineDate->modify("+$additionalDays days");
+    $newDeadline = $newDeadlineDate->format("d/m/Y H:i");
+    $trace->output("New Deadline: $newDeadline");
+
+
+    if ($initialMarkingDeadlineTimestamp <= 0) {
+        $trace->output("Initial Marking Deadline set to 0. Setting to 28 days after deadline.");
+        $hardDeadlineDate = clone $deadlineDate;
+        $hardDeadlineDate->modify("+28 days");
+    } else {
+        $hardDeadlineDate = (new DateTime())->setTimestamp($initialMarkingDeadlineTimestamp);
+        $hardDeadlineDate->modify("-7 days");
+    }
+
+    $hardDeadline = $hardDeadlineDate->format('d/m/Y H:i');
+    $trace->output("Hard Deadline: $hardDeadline");
+
+    if ($newDeadlineDate > $hardDeadlineDate) {
+        $newDeadline = $hardDeadline;
+    }
+
+    return $newDeadline;
+}
+
+function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\progress_trace $trace, $user, $courseModuleId, $extensionAmount) {
     global $DB;
 
     // GET course module record
@@ -283,8 +306,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($u
     $courseworkRecord = $DB->get_record('coursework', array('id' => $courseModule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
 
     $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->initialmarkingdeadline - 604800; //(unix timestamp value of 7 days)
-    $hardDeadline = $hardDeadline < 0 ? $deadline + 2419200 : $hardDeadline; // IF markingDeadline is 0 then set it to 4wks over cw deadline
+    $hardDeadline = $courseworkRecord->initialmarkingdeadline;
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -300,13 +322,11 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($u
     } elseif ($extensionAmount == -1) {
         $deletion = true;
     } else {
-        $newDeadline = $deadline + ($userServiceNeedsDays * 24 * 3600) + ($extensionAmount * 24 * 3600);
-        if ($newDeadline > $hardDeadline) {
-            $newDeadline = $hardDeadline;
-        }
+        $additionalDays = $userServiceNeedsDays + $extensionAmount;
+        $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
 
-    local_obu_submit_due_date_change($user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, $trace);
+    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
 
 function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
