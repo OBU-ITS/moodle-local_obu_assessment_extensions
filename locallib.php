@@ -52,9 +52,9 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
 function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null) {
     global $DB;
 
-    $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
+    $sql = "SELECT course FROM {course_modules} WHERE id = :cmid";
     $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
-    $course = $DB->get_record('course', array('id' => $courseModule->course), '*', MUST_EXIST);
+    $course = $DB->get_record('course', array('id' => $courseModule->course), 'idnumber', MUST_EXIST);
 
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
@@ -329,19 +329,19 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
 
-function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
-    $groupIds = [];
-
-    if (isset($decodedRestrictions['c'])) {
-        foreach ($decodedRestrictions['c'] as $condition) {
-            if (isset($condition['type']) && $condition['type'] === 'group' && isset($condition['id'])) {
-                $groupIds[] = $condition['id'];
-            }
-        }
-    }
-
-    return $groupIds;
-}
+//function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
+//    $groupIds = [];
+//
+//    if (isset($decodedRestrictions['c'])) {
+//        foreach ($decodedRestrictions['c'] as $condition) {
+//            if (isset($condition['type']) && $condition['type'] === 'group' && isset($condition['id'])) {
+//                $groupIds[] = $condition['id'];
+//            }
+//        }
+//    }
+//
+//    return $groupIds;
+//}
 
 function local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups) {
     $userGroupIds = array();
