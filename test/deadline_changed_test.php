@@ -43,7 +43,7 @@ $courseModuleData->section = $section;
 $courseModuleData->instance = $instanceid;
 $courseModuleData->visible = 1;
 $courseModuleData->availability = json_encode([
-    'op' => 'OR',
+    'op' => '|',
     'c' => [
         [
             'type' => 'group',

@@ -28,7 +28,7 @@ $plugin->requires = 2012120301;
 $plugin->component = 'local_obu_assessment_extensions';
 $plugin->maturity = MATURITY_STABLE;
 
-$plugin->release = 'v0.1.0.1';
+$plugin->release = 'v0.1.1.1';
 $plugin->dependencies = array(
 
 );

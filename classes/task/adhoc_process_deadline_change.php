@@ -1,5 +1,7 @@
 <?php
 
+namespace local_obu_assessment_extensions\task;
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -24,7 +26,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_obu_assessment_extensions\task;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -32,16 +34,14 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class adhoc_process_deadline_change extends \core\task\adhoc_task {
     public function execute() {
+        $customData = $this->get_custom_data();
+        $courseModuleId = $customData->courseModuleId;
+        $courseModuleUsers = $customData->courseModuleUsers;
+
         $trace = new \text_progress_trace();
-
-        $customdata = $this->get_custom_data();
-        $assessment = $customdata->assessment;
-        $assessmentUsers = $customdata->assessmentUsers;
-
-        foreach ($assessmentUsers as $user) {
-            local_obu_recalculate_due_for_assessment($user, $assessment, $trace);
+        foreach ($courseModuleUsers as $user) {
+            local_obu_recalculate_due_for_assessment($trace, $user, $courseModuleId);
         }
-
         $trace->finished();
     }
 }
