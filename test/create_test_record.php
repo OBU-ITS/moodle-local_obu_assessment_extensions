@@ -1,8 +1,8 @@
 <?php
 //**
-//  Example Url: /local/obu_assessment_extensions/test/create_test_record.php
-//  Example Url: /local/obu_assessment_extensions/test/create_test_record.php?action=insert&date=20%2F12%2F2024%2017%3A00
-//  Example Url: /local/obu_assessment_extensions/test/create_test_record.php?action=insert&date=20%2F12%2F2024%2017%3A00&type=coursework_temporary_exemption
+//  Example Url: /local/obu_assessment_extensions/test/create_test_record.php?user=19001001
+//  Example Url: /local/obu_assessment_extensions/test/create_test_record.php?user=19001001&action=insert&date=20%2F12%2F2024%2017%3A00
+//  Example Url: /local/obu_assessment_extensions/test/create_test_record.php?user=19001001&action=insert&date=20%2F12%2F2024%2017%3A00&type=coursework_temporary_exemption
 //  */
 
 namespace local_obu_assessment_extensions\test;
@@ -17,6 +17,9 @@ if (!is_siteadmin()) {
     die(); // Ensure the script stops execution after redirect
 }
 
+$user = optional_param('user', '19001001', PARAM_TEXT);
+$course = optional_param('course', '2024.ACFI6015_S12_1', PARAM_TEXT);
+$assessment = optional_param('assessment', '2024.ACFI6015_S12_1_202409_76487_CWS1WEEK08-1_70179_OE', PARAM_TEXT);
 $action = optional_param('action', 'delete', PARAM_TEXT); // insert, update, delete
 $date = optional_param('date', null, PARAM_TEXT);
 $dateText = $date ?? 'No Date';
@@ -29,9 +32,9 @@ $trace->output("Date: $dateText");
 $trace->output("Type: $type");
 
 $dueDateChange = new \stdClass();
-$dueDateChange->user  = '19001001';
-$dueDateChange->course  = '2024.ACFI6015_S12_1';
-$dueDateChange->assessment = '2024.ACFI6015_S12_1_202409_76487_CWS1WEEK08-1_70179_OE';
+$dueDateChange->user  = $user;
+$dueDateChange->course  = $course;
+$dueDateChange->assessment = $assessment;
 $dueDateChange->date = $date;
 $dueDateChange->timelimit = null;
 $dueDateChange->type = $type;
