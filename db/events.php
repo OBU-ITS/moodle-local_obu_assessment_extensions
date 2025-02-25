@@ -38,4 +38,8 @@ $observers = [
         'eventname' => '\core\event\user_updated',
         'callback'  => '\local_obu_assessment_extensions\observers\user_profile_updated_observer::user_profile_updated',
     ],
+    [
+        'eventname' => '\core\event\course_updated',
+        'callback'  => '\local_obu_assessment_extensions\observers\course_updated_observer::course_updated',
+    ],
 ];
