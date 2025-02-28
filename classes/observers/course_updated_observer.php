@@ -48,39 +48,49 @@ class course_updated_observer {
             error_log("❌ ERROR: Could not retrieve course object for ID: " . $courseId);
             return;
         }
-        //Is it a module course, if not move on
+
+        // Is it a teaching module course, if not move on
         if (!preg_match("/^[0-9]{4}\.[A-Z]{3,4}[0-9]{4}_[A-Z][0-9]{1,2}_[0-9]/", $course->idnumber)) {
             return;
         }
 
         $handler = \core_customfield\handler::get_handler('core_course', 'course');
         $fields = $handler->get_instance_data($courseId);
-        //$targetFields = ["ssbsect_score_cutoff_date", "ssbsect_reas_score_ctof_date"];
-        $targetFields = ["ap_code"];
+        $targetFields = ["ap_code"]; //["ssbsect_score_cutoff_date", "ssbsect_reas_score_ctof_date"];
         $updateFields = [];
-        $courseworkExists = $DB->record_exists('coursework', ['course' => $courseId]);
+        $updateCourseworkDeadlines = false;
 
         foreach ($fields as $field) {
             $fieldname = $field->get_field()->get('shortname');
-            //is the custom field one we are interested in?
-            if (in_array($fieldname, $targetFields)) {
-                $value = trim($field->get_value());
-                //have the custom fields we care about changed?
-                if (strpos($value, '*') === 0) {
-                    //does the course have coursework activities?
-                    if ($courseworkExists){
-                        //TODO::do the thing
-                    }
-                    $value = ltrim($value, '*');
 
-                    $updateFields[] = (object)[
-                        'id' => $field->get_field()->get('id'),
-                        'instanceid' => $courseId,
-                        'value' => $value
-                    ];
-                }
+            if (!in_array($fieldname, $targetFields)) {
+                continue;
+            }
+
+            $value = $field->get_value();
+            if (strpos($value, '*') === 0) {
+                $updateCourseworkDeadlines = true;
+
+                $updateFields[] = (object)[
+                    'id' => $field->get_field()->get('id'),
+                    'instanceid' => $courseId,
+                    'value' => ltrim($value, '*')
+                ];
 
                 error_log("📢 Relevant custom field change found: $fieldname - Value: " . $value);
+            }
+        }
+
+        if ($updateCourseworkDeadlines && $DB->record_exists('coursework', ['course' => $courseId])) {
+            $sql = "SELECT cm.instance
+                FROM {course_modules} cm
+                JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
+                WHERE course = :courseId";
+
+            $courseModuleInstanceIds = $DB->get_record_sql($sql, ['courseId' => $courseId]);
+
+            foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
+                local_obu_create_task_for_course_mod_change($trace, $courseModuleInstanceId->instance);
             }
         }
 
@@ -90,6 +100,7 @@ class course_updated_observer {
                 $DB->update_record('customfield_data', $updateField);
             }
             $transaction->allow_commit();
+
             error_log("✅ Bulk update completed for " . count($updateFields) . " fields.");
         }
 

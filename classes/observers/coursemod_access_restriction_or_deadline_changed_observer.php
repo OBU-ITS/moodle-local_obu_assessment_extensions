@@ -50,53 +50,6 @@ class coursemod_access_restriction_or_deadline_changed_observer {
             return;
         }
 
-        $sql = "SELECT id, course, availability
-        FROM {course_modules} cm
-        JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = :courseModuleInstanceId";
-
-        $courseModule = $DB->get_record_sql($sql, ['courseModuleInstanceId' => $courseModuleInstanceId]);
-
-        if(!$courseModule) {
-            $trace->output("No courseModule found");
-            $trace->output("Course module instance ID: $courseModuleInstanceId");
-        }
-
-        $newRestrictions = $courseModule->availability;
-        $trace->output("Availablity: $newRestrictions");
-
-        $courseContext = \context_course::instance($courseModule->course);
-        $users = get_enrolled_users($courseContext);
-        $trace->output("Users on Course: " . count($users));
-
-        $modinfo = get_fast_modinfo($courseModule->course);
-
-        $courseModuleUsers = array();
-        try {
-            $cm_info = $modinfo->get_cm($courseModule->id);
-            $info = new \core_availability\info_module($cm_info);
-            $courseModuleUsers = $info->filter_user_list($users);
-        }
-        catch (\moodle_exception $e) {
-            $trace->output("Unable to use availablity API: " . $e->errorcode);
-            $pattern = '/"group","id":(\d+)/';
-            preg_match_all($pattern, $newRestrictions, $matches);
-            $groupIds = $matches[1];
-            foreach ($groupIds as $groupId){
-                $groupUsers = local_obu_get_users_by_assessment_group($groupId);
-                $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
-            }
-        }
-
-        $trace->output("Filtered Users: " . count($courseModuleUsers));
-
-        $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
-        $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
-
-        $trace->output("Task created");
-
-        \core\task\manager::queue_adhoc_task($task);
-
-        $trace->output("Task queued");
+        local_obu_create_task_for_course_mod_change($trace, $courseModuleInstanceId);
     }
 }
