@@ -16,6 +16,7 @@ namespace local_obu_assessment_extensions\observers;
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+use core_reportbuilder\local\helpers\custom_fields;
 
 /**
  * Plugin user profile updated event observer
@@ -47,30 +48,50 @@ class course_updated_observer {
             error_log("❌ ERROR: Could not retrieve course object for ID: " . $courseId);
             return;
         }
+        //Is it a module course, if not move on
         if (!preg_match("/^[0-9]{4}\.[A-Z]{3,4}[0-9]{4}_[A-Z][0-9]{1,2}_[0-9]/", $course->idnumber)) {
             return;
         }
 
         $handler = \core_customfield\handler::get_handler('core_course', 'course');
         $fields = $handler->get_instance_data($courseId);
-        $targetFields = ["ssbsect_score_cutoff_date", "ssbsect_reas_score_ctof_date"];
-        $customFieldValues = [];
+        //$targetFields = ["ssbsect_score_cutoff_date", "ssbsect_reas_score_ctof_date"];
+        $targetFields = ["ap_code"];
+        $updateFields = [];
+        $courseworkExists = $DB->record_exists('coursework', ['course' => $courseId]);
 
         foreach ($fields as $field) {
-            $fieldname = $field->get_field()->get('shortname'); // Custom field shortname
-
+            $fieldname = $field->get_field()->get('shortname');
+            //is the custom field one we are interested in?
             if (in_array($fieldname, $targetFields)) {
-                $customFieldValues[$fieldname] = $field->get_value();
-                error_log("📢 Custom Field Found: $fieldname - Value: " . $field->get_value());
+                $value = trim($field->get_value());
+                //have the custom fields we care about changed?
+                if (strpos($value, '*') === 0) {
+                    //does the course have coursework activities?
+                    if ($courseworkExists){
+                        //TODO::do the thing
+                    }
+                    $value = ltrim($value, '*');
+
+                    $updateFields[] = (object)[
+                        'id' => $field->get_field()->get('id'),
+                        'instanceid' => $courseId,
+                        'value' => $value
+                    ];
+                }
+
+                error_log("📢 Relevant custom field change found: $fieldname - Value: " . $value);
             }
         }
 
-        if (empty($customFieldValues)) {
-            error_log("❌ No matching custom fields found.");
-            return;
+        if (!empty($updateFields)){
+            $transaction = $DB->start_delegated_transaction();
+            foreach ($updateFields as $updateField) {
+                $DB->update_record('customfield_data', $updateField);
+            }
+            $transaction->allow_commit();
+            error_log("✅ Bulk update completed for " . count($updateFields) . " fields.");
         }
-
-        $courseworkExists = $DB->record_exists('coursework', ['course' => $courseId]);
 
 
     }

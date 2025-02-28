@@ -23,11 +23,7 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-<<<<<<< Updated upstream
 $plugin->version = 2025021101;
-=======
-$plugin->version = 2024101702;
->>>>>>> Stashed changes
 $plugin->requires = 2012120301;
 $plugin->component = 'local_obu_assessment_extensions';
 $plugin->maturity = MATURITY_STABLE;
