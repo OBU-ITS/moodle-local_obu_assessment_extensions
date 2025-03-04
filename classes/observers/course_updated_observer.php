@@ -16,7 +16,6 @@ namespace local_obu_assessment_extensions\observers;
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-use core_reportbuilder\local\helpers\custom_fields;
 
 /**
  * Plugin user profile updated event observer
@@ -71,39 +70,41 @@ class course_updated_observer {
             if (strpos($value, '*') === 0) {
                 $updateCourseworkDeadlines = true;
 
-                $updateFields[] = (object)[
-                    'id' => $field->get_field()->get('id'),
-                    'instanceid' => $courseId,
-                    'value' => ltrim($value, '*')
-                ];
+                $existingField = $DB->get_record('customfield_data', [
+                    'fieldid' => $field->get_field()->get('id'), // Correct field
+                    'instanceid' => $courseId
+                ]);
 
+                if ($existingField) {
+                    $updateFields[] = (object)[
+                        'id' => (int) $existingField->id,
+                        'instanceid' => $courseId,
+                        'value' => ltrim($value, '*')
+                    ];
+                }
                 error_log("📢 Relevant custom field change found: $fieldname - Value: " . $value);
             }
         }
 
-        if ($updateCourseworkDeadlines && $DB->record_exists('coursework', ['course' => $courseId])) {
+        if ($updateCourseworkDeadlines) {
             $sql = "SELECT cm.instance
                 FROM {course_modules} cm
                 JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-                WHERE course = :courseId";
+                WHERE cm.course = :course";
 
-            $courseModuleInstanceIds = $DB->get_record_sql($sql, ['courseId' => $courseId]);
+            $courseModuleInstanceIds = $DB->get_record_sql($sql, ['course' => $courseId]);
 
             foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
-                local_obu_create_task_for_course_mod_change($trace, $courseModuleInstanceId->instance);
+                error_log("📢 cmid: " . $courseModuleInstanceId);
+                local_obu_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId);
             }
         }
 
         if (!empty($updateFields)){
-            $transaction = $DB->start_delegated_transaction();
             foreach ($updateFields as $updateField) {
                 $DB->update_record('customfield_data', $updateField);
             }
-            $transaction->allow_commit();
-
-            error_log("✅ Bulk update completed for " . count($updateFields) . " fields.");
+            error_log("✅ update completed for " . count($updateFields) . " fields.");
         }
-
-
     }
 }

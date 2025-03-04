@@ -364,12 +364,12 @@ function local_obu_find_common_assessment_group($assessmentGroups, $userAssessme
 function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstanceId) {
     global $DB;
 
-    $sql = "SELECT id, course, availability
+    $sql = "SELECT cm.id, cm.course, cm.availability
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = :courseModuleInstanceId";
+        WHERE cm.instance = " . (int) $courseModuleInstanceId;
 
-    $courseModule = $DB->get_record_sql($sql, ['courseModuleInstanceId' => $courseModuleInstanceId]);
+    $courseModule = $DB->get_record_sql($sql);
 
     if(!$courseModule) {
         $trace->output("No courseModule found");
