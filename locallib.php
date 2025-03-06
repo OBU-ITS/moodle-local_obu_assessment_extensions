@@ -228,10 +228,20 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
 
     // GET course module record
     $coursemodule = $DB->get_record('course_modules', array('id' => $courseModuleId), 'instance', MUST_EXIST);
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, ssbsect_score_cutoff_date, ssbsect_reas_score_ctof_date', MUST_EXIST);
+
+    $pattern = '/"group","id":(\d+)/';
+    preg_match_all($pattern, $coursemodule->availability, $matches);
+    $groupid = $matches[1];
+    $assessmentGroup = $DB->get_record('groups', array('id' => $groupid), 'id, idnumber', IGNORE_MISSING);
 
     $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->initialmarkingdeadline;
+    if (substr($assessmentGroup->idnumber, -2) === "OE") {
+        $hardDeadline = $courseworkRecord->ssbsect_score_cutoff_date;
+    } else {
+        $hardDeadline = $courseworkRecord->ssbsect_reas_score_ctof_date;
+    }
+
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -305,10 +315,19 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
 
     // GET course module record
     $courseModule = $DB->get_record('course_modules', array('id' => $courseModuleId), 'instance', MUST_EXIST);
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $courseModule->instance), 'deadline, initialmarkingdeadline', MUST_EXIST);
+    $courseworkRecord = $DB->get_record('coursework', array('id' => $courseModule->instance), 'deadline, ssbsect_score_cutoff_date, ssbsect_reas_score_ctof_date', MUST_EXIST);
+
+    $pattern = '/"group","id":(\d+)/';
+    preg_match_all($pattern, $courseModule->availability, $matches);
+    $groupid = $matches[1];
+    $assessmentGroup = $DB->get_record('groups', array('id' => $groupid), 'id, idnumber', IGNORE_MISSING);
 
     $deadline = $courseworkRecord->deadline;
-    $hardDeadline = $courseworkRecord->initialmarkingdeadline;
+    if (substr($assessmentGroup->idnumber, -2) === "OE") {
+        $hardDeadline = $courseworkRecord->ssbsect_score_cutoff_date;
+    } else {
+        $hardDeadline = $courseworkRecord->ssbsect_reas_score_ctof_date;
+    }
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -367,7 +386,7 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
     $sql = "SELECT cm.id, cm.course, cm.availability
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = " . (int) $courseModuleInstanceId;
+        WHERE cm.instance = " . $courseModuleInstanceId;
 
     $courseModule = $DB->get_record_sql($sql);
 

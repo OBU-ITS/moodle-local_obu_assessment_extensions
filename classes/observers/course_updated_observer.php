@@ -44,7 +44,7 @@ class course_updated_observer {
         $course = get_course($courseId);
 
         if (!$course) {
-            error_log("❌ ERROR: Could not retrieve course object for ID: " . $courseId);
+            $trace->output("❌ ERROR: Could not retrieve course object for ID: " . $courseId);
             return;
         }
 
@@ -55,7 +55,7 @@ class course_updated_observer {
 
         $handler = \core_customfield\handler::get_handler('core_course', 'course');
         $fields = $handler->get_instance_data($courseId);
-        $targetFields = ["ap_code"]; //["ssbsect_score_cutoff_date", "ssbsect_reas_score_ctof_date"];
+        $targetFields = ["ssbsect_score_cutoff_date", "ssbsect_reas_score_ctof_date"];
         $updateFields = [];
         $updateCourseworkDeadlines = false;
 
@@ -76,13 +76,14 @@ class course_updated_observer {
                 ]);
 
                 if ($existingField) {
-                    $updateFields[] = (object)[
-                        'id' => (int) $existingField->id,
-                        'instanceid' => $courseId,
-                        'value' => ltrim($value, '*')
-                    ];
+                    $updateField = new \stdClass();
+                    $updateField->id = (int) $existingField->id;
+                    $updateField->instanceid = $courseId;
+                    $updateField->charvalue = ltrim($value, '*');
+
+                    $updateFields[] = $updateField;
                 }
-                error_log("📢 Relevant custom field change found: $fieldname - Value: " . $value);
+                $trace->output("📢 Relevant custom field change found: $fieldname - Value: " . $value);
             }
         }
 
@@ -92,19 +93,24 @@ class course_updated_observer {
                 JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
                 WHERE cm.course = :course";
 
-            $courseModuleInstanceIds = $DB->get_record_sql($sql, ['course' => $courseId]);
+            $courseModuleInstanceIds = $DB->get_records_sql($sql, ['course' => $courseId]);
 
             foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
-                error_log("📢 cmid: " . $courseModuleInstanceId);
-                local_obu_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId);
+                $trace->output("📢 cmid: " . $courseModuleInstanceId->instance);
+                local_obu_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
             }
         }
 
         if (!empty($updateFields)){
             foreach ($updateFields as $updateField) {
-                $DB->update_record('customfield_data', $updateField);
+                $trace->output("📢 updateField object: " . print_r($updateField, true));
+                try {
+                    $DB->update_record('customfield_data', $updateField);
+                } catch (\Exception $e) {
+                    $trace->output("⚠️ SQL error on update record customfiled data: " . $e->getMessage());
+                }
             }
-            error_log("✅ update completed for " . count($updateFields) . " fields.");
+            $trace->output("✅ update completed for " . count($updateFields) . " fields.");
         }
     }
 }
