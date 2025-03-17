@@ -19,11 +19,11 @@ if (!is_siteadmin()) {
 }
 
 
-$deadline = required_param('deadline', PARAM_INT);
+$deadline = required_param('deadline', PARAM_INT); // full date & time string
 $extensionDays = required_param('extension-days', PARAM_INT);
-$markingDeadline = optional_param('marking-deadline', 0, PARAM_INT);
+$hardDeadline = optional_param('marking-deadline', 0, PARAM_INT); // string representation of Oracle date
 
 $trace = new \html_progress_trace();
-$newDeadline = calc_new_deadline($trace, $deadline, $extensionDays, $markingDeadline);
+$newDeadline = calc_new_deadline($trace, $deadline, $extensionDays, $hardDeadline);
 $trace->output("New deadline: $newDeadline");
 $trace->finished();
