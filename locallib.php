@@ -56,6 +56,11 @@ function local_obu_submit_due_date_change(\progress_trace $trace, $user, $course
     $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
     $course = $DB->get_record('course', array('id' => $courseModule->course), 'idnumber', MUST_EXIST);
 
+    if (!$course->idnumber) {
+        $trace->output("Skipping due date change for course with no idnumber");
+        return;
+    }
+
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
     $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
@@ -497,7 +502,7 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
 
     $trace->output("Filtered Users: " . count($courseModuleUsers));
 
-    $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
+    $task = new task\adhoc_process_deadline_change();
     $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
 
     $trace->output("Task created");
