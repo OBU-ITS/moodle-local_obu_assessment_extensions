@@ -416,8 +416,14 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
         $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
 
+    $newDeadlineTimestamp = strtotime($newDeadline);
+    if ($newDeadlineTimestamp === $deadline) {
+        // Deadlines are the same, skip extension submission
+        return;
+    }
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
+
 
 //function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
 //    $groupIds = [];
