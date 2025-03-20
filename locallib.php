@@ -306,6 +306,12 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
         $newDeadline = calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
     }
 
+    $newDeadlineTimestamp = strtotime($newDeadline);
+    if ($newDeadlineTimestamp === $deadline) {
+        // Deadlines are the same, skip extension submission
+        return;
+    }
+
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
 
