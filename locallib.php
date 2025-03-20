@@ -190,6 +190,7 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
         SELECT cm.*
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id
+        JOIN {course} c ON c.id = cm.course AND c.idnumber <> '' AND c.idnumber IS NOT NULL
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
@@ -468,6 +469,11 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
         WHERE cm.instance = " . $courseModuleInstanceId;
 
     $courseModule = $DB->get_record_sql($sql);
+
+    $course = $DB->get_record('course', array('id' => $courseModule->course), 'idnumber', MUST_EXIST);
+    if (!$course->idnumber){
+        return;
+    }
 
     if(!$courseModule) {
         $trace->output("No courseModule found");
