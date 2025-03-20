@@ -72,5 +72,21 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024101101, 'local', 'obu_assessment_extensions');
     }
 
+    if ($oldversion < 2025032001) {
+
+        $sql = "SELECT cm.instance
+                FROM {course_modules} cm
+                JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'";
+
+        $trace = new \null_progress_trace();
+
+        $courseModuleInstanceIds = $DB->get_records_sql($sql);
+        foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
+            local_obu_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
+        }
+
+        upgrade_plugin_savepoint(true, 2025032001, 'local', 'obu_assessment_extensions');
+    }
+
     return $result;
 }
