@@ -502,7 +502,7 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
 
     $trace->output("Filtered Users: " . count($courseModuleUsers));
 
-    $task = new task\adhoc_process_deadline_change();
+    $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
     $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
 
     $trace->output("Task created");
