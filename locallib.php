@@ -313,11 +313,17 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
         local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
         $newDeadline = calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
     }
+    $trace->output("New Deadline is $newDeadline");
 
-    $newDeadlineTimestamp = strtotime($newDeadline);
-    $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    $dateTime = DateTime::createFromFormat('d/m/Y H:i', $newDeadline);
+    if ($dateTime === false) {
+        $trace->output('Failed to parse date. Please check the format.');
+    } else {
+        $newDeadlineTimestamp = $dateTime->getTimestamp();
+        $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    }
     $trace->output("Deadline timestamp = $deadline");
-    if ($newDeadlineTimestamp === $deadline) {
+    if ($newDeadlineTimestamp == $deadline) {
         // Deadlines are the same, skip extension submission
         $trace->output("No change in deadline, skipping submission");
         return;
@@ -368,7 +374,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     global $DB;
 
     // GET course module record
-    $courseModule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance', MUST_EXIST);
+    $courseModule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance, course', MUST_EXIST);
 
     // Get the coursework record to retrieve the deadline
     $courseworkRecord = $DB->get_record('coursework', ['id' => $courseModule->instance], 'deadline', MUST_EXIST);
@@ -380,7 +386,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
             WHERE cfd.instanceid = :instanceid
             AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
 
-    $customFields = $DB->get_records_sql($sql, ['instanceid' => $courseModule->instance]);
+    $customFields = $DB->get_records_sql($sql, ['instanceid' => $courseModule->course]);
     $trace ->output("Custom fields: " . json_encode($customFields));
 
     // Extract the relevant custom fields into variables
@@ -431,7 +437,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     $newDeadlineTimestamp = strtotime($newDeadline);
     $trace->output("New deadline timestamp = $newDeadlineTimestamp");
     $trace->output("Deadline timestamp = $deadline");
-    if ($newDeadlineTimestamp === $deadline) {
+    if ($newDeadlineTimestamp == $deadline) {
         // Deadlines are the same, skip extension submission
         $trace->output('No change in deadline, skipping submission');
         return;
