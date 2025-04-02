@@ -313,8 +313,11 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     }
 
     $newDeadlineTimestamp = strtotime($newDeadline);
+    $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    $trace->output("Deadline timestamp = $deadline");
     if ($newDeadlineTimestamp === $deadline) {
         // Deadlines are the same, skip extension submission
+        $trace->output("No change in deadline, skipping submission");
         return;
     }
 
@@ -423,8 +426,11 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     }
 
     $newDeadlineTimestamp = strtotime($newDeadline);
+    $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    $trace->output("Deadline timestamp = $deadline");
     if ($newDeadlineTimestamp === $deadline) {
         // Deadlines are the same, skip extension submission
+        $trace->output('No change in deadline, skipping submission');
         return;
     }
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
