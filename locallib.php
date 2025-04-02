@@ -237,7 +237,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     global $DB;
 
     // GET course module record
-    $coursemodule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance', MUST_EXIST);
+    $coursemodule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance, course', MUST_EXIST);
 
     // Get the coursework record to retrieve the deadline
     $courseworkRecord = $DB->get_record('coursework', ['id' => $coursemodule->instance], 'deadline', MUST_EXIST);
@@ -249,7 +249,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
             WHERE cfd.instanceid = :instanceid
             AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
 
-    $customFields = $DB->get_records_sql($sql, ['instanceid' => $coursemodule->instance]);
+    $customFields = $DB->get_records_sql($sql, ['instanceid' => $coursemodule->course]);
     $trace->output('Custom fields: ' . json_encode($customFields));
 
     // Extract the relevant custom fields into variables
