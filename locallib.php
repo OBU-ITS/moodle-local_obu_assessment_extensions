@@ -250,6 +250,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
             AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
 
     $customFields = $DB->get_records_sql($sql, ['instanceid' => $coursemodule->instance]);
+    $trace->output('Custom fields: ' . json_encode($customFields));
 
     // Extract the relevant custom fields into variables
     $ssbsect_score_cutoff_date = null;
@@ -276,6 +277,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     } else {
         $hardDeadline = $ssbsect_reas_score_ctof_date;
     }
+    $trace->output("Hard Deadline: $hardDeadline");
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -337,7 +339,7 @@ function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $addition
 
     // Parse hard deadline (in string format like '17-MAR-25') into DateTime
     // NOTE: Adjust this format if necessary based on your actual data format
-    $hardDeadlineDate = DateTime::createFromFormat('d-M-y', $hardDeadline);
+    $hardDeadlineDate = DateTime::createFromFormat('d-M-y H:i', $hardDeadline . ' 00:00');
 
     if (!$hardDeadlineDate) {
         // If parsing fails, log an error and return the new deadline
@@ -379,6 +381,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
             AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
 
     $customFields = $DB->get_records_sql($sql, ['instanceid' => $courseModule->instance]);
+    $trace ->output("Custom fields: " . json_encode($customFields));
 
     // Extract the relevant custom fields into variables
     $ssbsect_score_cutoff_date = null;
