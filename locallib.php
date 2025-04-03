@@ -454,15 +454,22 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
         $additionalDays = $userServiceNeedsDays + $extensionAmount;
         $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
+    $trace->output("New Deadline is $newDeadline");
 
-    $newDeadlineTimestamp = strtotime($newDeadline);
-    $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    $dateTime = DateTime::createFromFormat('d/m/Y H:i', $newDeadline);
+    if ($dateTime === false) {
+        $trace->output('Failed to parse date. Please check the format.');
+    } else {
+        $newDeadlineTimestamp = $dateTime->getTimestamp();
+        $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    }
     $trace->output("Deadline timestamp = $deadline");
     if ($newDeadlineTimestamp == $deadline) {
         // Deadlines are the same, skip extension submission
         $trace->output('No change in deadline, skipping submission');
         return;
     }
+
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
 
@@ -521,7 +528,7 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
     $trace->output("Availability: $newRestrictions");
 
     $courseContext = \context_course::instance($courseModule->course);
-    $users = get_enrolled_users($courseContext, null, null, 'u.id, u.username', 'u.id');
+    $users = get_enrolled_students($courseModule->course);
     $trace->output('Users on Course: ' . count($users));
 
     $modinfo = get_fast_modinfo($courseModule->course);
@@ -531,18 +538,8 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
         $cm_info = $modinfo->get_cm($courseModule->id);
         $info = new \core_availability\info_module($cm_info);
         $courseModuleUsers = $info->filter_user_list($users);
-
-        // Filter out non-student users.
-        $enrolledStudents = get_enrolled_students($courseModule->course);
-        $enrolledStudentIds = array_keys($enrolledStudents);
-        $trace->output('Enrolled Student IDs: ' . implode(', ', $enrolledStudentIds));
-        $courseModuleUsers = array_filter($courseModuleUsers, function($user) use ($enrolledStudentIds) {
-            return in_array($user->id, $enrolledStudentIds);
-        });
-
     } catch (\moodle_exception $e) {
         $trace->output('Availability API error: ' . $e->errorcode);
-
         $groupIds = [];
         preg_match_all('/"group","id":(\d+)/', $newRestrictions, $matches);
         $groupIds = $matches[1];
@@ -551,13 +548,6 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
             $groupUsers = local_obu_get_users_by_assessment_group($groupId);
             $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
         }
-
-        $enrolledStudents = get_enrolled_students($courseModule->course);
-        $enrolledStudentIds = array_keys($enrolledStudents);
-        $trace->output('Enrolled Student IDs: ' . implode(', ', $enrolledStudentIds));
-        $courseModuleUsers = array_filter($courseModuleUsers, function($user) use ($enrolledStudentIds) {
-            return in_array($user->id, $enrolledStudentIds);
-        });
     }
 
     if (empty($courseModuleUsers)) {
