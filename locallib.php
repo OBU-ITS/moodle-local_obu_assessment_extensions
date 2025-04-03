@@ -49,6 +49,27 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
+/**
+ * Retrieve all students db or meta enrolled in a given course with the 'student' (roleid = 5) role.
+ *
+ * @param int $courseid The course ID to fetch enrolled students for.
+ * @return array An array of enrolled students (user id and username).
+ */
+function get_enrolled_students($courseid) : array {
+    global $DB;
+
+    $sql = "SELECT DISTINCT u.id, u.username
+               FROM {enrol} e 
+               JOIN {user_enrolments} ue ON e.id = ue.enrolid
+               JOIN {user} u ON u.id = ue.userid
+               JOIN {role_assignments} ra ON ra.userid = ue.userid AND ra.roleid = 5
+               JOIN {context} c ON c.id = ra.contextid AND c.instanceid = e.courseid AND c.contextlevel = 50
+               WHERE e.enrol IN ('database', 'meta')
+                 AND e.courseid = ?";
+
+    return $DB->get_records_sql($sql, [$courseid]);
+}
+
 function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, $deleteExisting = null) {
     global $DB;
 
@@ -478,57 +499,81 @@ function local_obu_find_common_assessment_group($assessmentGroups, $userAssessme
 function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstanceId) {
     global $DB;
 
+    // Get the relevant course module details for this instance ID.
     $sql = "SELECT cm.id, cm.course, cm.availability
-        FROM {course_modules} cm
-        JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = " . $courseModuleInstanceId;
+            FROM {course_modules} cm
+            JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
+            WHERE cm.instance = :instanceid";
+    $courseModule = $DB->get_record_sql($sql, ['instanceid' => $courseModuleInstanceId]);
 
-    $courseModule = $DB->get_record_sql($sql);
+    // Get course information and check if idnumber exists (external system identifier).
+    $course = $DB->get_record('course', ['id' => $courseModule->course], 'idnumber', MUST_EXIST);
+    if (!$course->idnumber) {
+        return; // Exit if there's no idnumber.
+    }
 
-    $course = $DB->get_record('course', array('id' => $courseModule->course), 'idnumber', MUST_EXIST);
-    if (!$course->idnumber){
+    if (!$courseModule) {
+        $trace->output("No course module found for instance ID: $courseModuleInstanceId");
         return;
     }
 
-    if(!$courseModule) {
-        $trace->output("No courseModule found");
-        $trace->output("Course module instance ID: $courseModuleInstanceId");
-    }
-
     $newRestrictions = $courseModule->availability;
-    $trace->output("Availablity: $newRestrictions");
+    $trace->output("Availability: $newRestrictions");
 
     $courseContext = \context_course::instance($courseModule->course);
-    $users = get_enrolled_users($courseContext);
-    $trace->output("Users on Course: " . count($users));
+    $users = get_enrolled_users($courseContext, null, null, 'u.id, u.username', 'u.id');
+    $trace->output('Users on Course: ' . count($users));
 
     $modinfo = get_fast_modinfo($courseModule->course);
+    $courseModuleUsers = [];
 
-    $courseModuleUsers = array();
     try {
         $cm_info = $modinfo->get_cm($courseModule->id);
         $info = new \core_availability\info_module($cm_info);
         $courseModuleUsers = $info->filter_user_list($users);
-    }
-    catch (\moodle_exception $e) {
-        $trace->output("Unable to use availablity API: " . $e->errorcode);
-        $pattern = '/"group","id":(\d+)/';
-        preg_match_all($pattern, $newRestrictions, $matches);
+
+        // Filter out non-student users.
+        $enrolledStudents = get_enrolled_students($courseModule->course);
+        $enrolledStudentIds = array_keys($enrolledStudents);
+        $trace->output('Enrolled Student IDs: ' . implode(', ', $enrolledStudentIds));
+        $courseModuleUsers = array_filter($courseModuleUsers, function($user) use ($enrolledStudentIds) {
+            return in_array($user->id, $enrolledStudentIds);
+        });
+
+    } catch (\moodle_exception $e) {
+        $trace->output('Availability API error: ' . $e->errorcode);
+
+        $groupIds = [];
+        preg_match_all('/"group","id":(\d+)/', $newRestrictions, $matches);
         $groupIds = $matches[1];
-        foreach ($groupIds as $groupId){
+
+        foreach ($groupIds as $groupId) {
             $groupUsers = local_obu_get_users_by_assessment_group($groupId);
             $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
         }
+
+        $enrolledStudents = get_enrolled_students($courseModule->course);
+        $enrolledStudentIds = array_keys($enrolledStudents);
+        $trace->output('Enrolled Student IDs: ' . implode(', ', $enrolledStudentIds));
+        $courseModuleUsers = array_filter($courseModuleUsers, function($user) use ($enrolledStudentIds) {
+            return in_array($user->id, $enrolledStudentIds);
+        });
     }
 
-    $trace->output("Filtered Users: " . count($courseModuleUsers));
+    if (empty($courseModuleUsers)) {
+        $trace->output('No valid users found with permissions; task creation aborted.');
+        return;
+    }
+
+    $trace->output('Filtered Users: ' . count($courseModuleUsers));
+    $trace->output('Filtered User IDs: ' . implode(', ', array_map(function($user) {
+            return $user->id;
+        }, $courseModuleUsers)));
 
     $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
     $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
 
-    $trace->output("Task created");
-
+    $trace->output('Task created');
     \core\task\manager::queue_adhoc_task($task);
-
-    $trace->output("Task queued");
+    $trace->output('Task queued');
 }
