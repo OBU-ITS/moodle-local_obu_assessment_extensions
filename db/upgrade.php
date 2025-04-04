@@ -72,7 +72,7 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024101101, 'local', 'obu_assessment_extensions');
     }
 
-    if ($oldversion < 2025040300) { // Adjust version number accordingly
+    if ($oldversion < 2025040300) {
         global $DB;
 
         // Delete all tasks specific to the class

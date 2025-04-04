@@ -273,9 +273,13 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     $customFields = $DB->get_records_sql($sql, ['instanceid' => $coursemodule->course]);
     $trace->output('Custom fields: ' . json_encode($customFields));
 
-    // Extract the relevant custom fields into variables
-    $ssbsect_score_cutoff_date = null;
-    $ssbsect_reas_score_ctof_date = null;
+    // Calculate default date: courseworkRecord->deadline + 35 days in case the custom fields are unpopulated
+    $defaultDate = strtotime('+35 days', $courseworkRecord->deadline);
+    $defaultDateFormatted = date('d-M-y', $defaultDate);
+
+    // Set default values for custom fields
+    $ssbsect_score_cutoff_date = $defaultDateFormatted;
+    $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
 
     foreach ($customFields as $field) {
         if ($field->shortname === 'ssbsect_score_cutoff_date') {
@@ -309,18 +313,22 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
     $userServiceNeedsDays = $userExtensionWeeks->data * 7;
 
-    $extensionRecord = $DB->get_record_sql(
-        'SELECT extension_amount
-            FROM {local_obu_assessment_ext}
-            WHERE ' . $DB->sql_compare_text('student_id') . ' = ?
-            AND ' . $DB->sql_compare_text('assessment_id') . ' = ?
-            AND is_processed = true
-            AND extension_amount > 0
-            ORDER BY id DESC
-            LIMIT 1',
-        [$user->username, $courseModuleId]);
+    $sql = '
+    SELECT extension_amount
+    FROM {local_obu_assessment_ext}
+    WHERE ' . $DB->sql_compare_text('student_id') . ' = ?
+      AND ' . $DB->sql_compare_text('assessment_id') . ' = ?
+      AND is_processed = true
+      AND extension_amount > 0
+    ORDER BY id DESC
+    LIMIT 1';
+
+    $params = [$user->username, $courseModuleId];
+
+    $extensionRecord = $DB->get_record_sql($sql, $params);
 
     if ($extensionRecord) {
+
         if ($extensionRecord->extension_amount == 0) {
             $temporaryExemption = true;
         } else if ($extensionRecord->extension_amount == -1) {
@@ -364,8 +372,6 @@ function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $addition
     $newDeadline = $newDeadlineDate->format('d/m/Y H:i');
     $trace->output("New Deadline: $newDeadline");
 
-    // Parse hard deadline (in string format like '17-MAR-25') into DateTime
-    // NOTE: Adjust this format if necessary based on your actual data format
     $hardDeadlineDate = DateTime::createFromFormat('d-M-y H:i', $hardDeadline . ' 00:00');
 
     if (!$hardDeadlineDate) {
@@ -410,9 +416,13 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     $customFields = $DB->get_records_sql($sql, ['instanceid' => $courseModule->course]);
     $trace ->output("Custom fields: " . json_encode($customFields));
 
-    // Extract the relevant custom fields into variables
-    $ssbsect_score_cutoff_date = null;
-    $ssbsect_reas_score_ctof_date = null;
+    // Calculate default date: courseworkRecord->deadline + 35 days in case the custom fields are unpopulated
+    $defaultDate = strtotime('+35 days', $courseworkRecord->deadline);
+    $defaultDateFormatted = date('d-M-y', $defaultDate);
+
+    // Set default values for custom fields
+    $ssbsect_score_cutoff_date = $defaultDateFormatted;
+    $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
 
     foreach ($customFields as $field) {
         if ($field->shortname === 'ssbsect_score_cutoff_date') {
