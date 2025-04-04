@@ -54,7 +54,7 @@ class user_profile_updated_observer {
         $trace->output("Extensions Data: $userFields->data");
 
         if ($userFields && strpos($userFields->data, '*') === 0) {
-            $user = \core_user::get_user($userId);
+            $user = \core_user::get_user($userId,'id, username');
             $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
 
             $assessments = array();
