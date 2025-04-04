@@ -49,12 +49,38 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
     return true;
 }
 
+/**
+ * Retrieve all students db or meta enrolled in a given course with the 'student' (roleid = 5) role.
+ *
+ * @param int $courseid The course ID to fetch enrolled students for.
+ * @return array An array of enrolled students (user id and username).
+ */
+function get_enrolled_students($courseid) : array {
+    global $DB;
+
+    $sql = "SELECT DISTINCT u.id, u.username
+               FROM {enrol} e 
+               JOIN {user_enrolments} ue ON e.id = ue.enrolid
+               JOIN {user} u ON u.id = ue.userid
+               JOIN {role_assignments} ra ON ra.userid = ue.userid AND ra.roleid = 5
+               JOIN {context} c ON c.id = ra.contextid AND c.instanceid = e.courseid AND c.contextlevel = 50
+               WHERE e.enrol IN ('database', 'meta')
+                 AND e.courseid = ?";
+
+    return $DB->get_records_sql($sql, [$courseid]);
+}
+
 function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, $deleteExisting = null) {
     global $DB;
 
     $sql = "SELECT course FROM {course_modules} WHERE id = :cmid";
     $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
     $course = $DB->get_record('course', array('id' => $courseModule->course), 'idnumber', MUST_EXIST);
+
+    if (!$course->idnumber) {
+        $trace->output("Skipping due date change for course with no idnumber");
+        return;
+    }
 
     $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
@@ -148,7 +174,7 @@ function local_obu_get_assessment_groups_by_user($userIdNumber): array {
 
     $groupIds = array_keys($groupIds);
     if (!empty($groupIds)) {
-        list($inSql, $params) = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', true);
+        [$inSql, $params] = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', true);
         $groups = $DB->get_records_select('groups', "id $inSql", $params);
         foreach ($groups as $group) {
             if (preg_match("/^\d{4}\..+?_.+?_\d+_\d{6}_\d+_.+?-\d+_\d+_.{1,2}$/", $group->idnumber)) {
@@ -171,7 +197,7 @@ function local_obu_get_users_by_assessment_group($assessmentGroupId): array {
     $userIds = array_keys($userIds);
 
     if (!empty($userIds)) {
-        list($inSql, $params) = $DB->get_in_or_equal($userIds, SQL_PARAMS_QM, '', true);
+        [$inSql, $params] = $DB->get_in_or_equal($userIds, SQL_PARAMS_QM, '', true);
         $users = $DB->get_records_select('user', "id $inSql", $params);
     }
 
@@ -185,6 +211,7 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
         SELECT cm.*
         FROM {course_modules} cm
         JOIN {modules} m ON cm.module = m.id
+        JOIN {course} c ON c.id = cm.course AND c.idnumber <> '' AND c.idnumber IS NOT NULL
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
@@ -231,21 +258,51 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     global $DB;
 
     // GET course module record
-    $coursemodule = $DB->get_record('course_modules', array('id' => $courseModuleId), 'instance', MUST_EXIST);
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $coursemodule->instance), 'deadline, ssbsect_score_cutoff_date, ssbsect_reas_score_ctof_date', MUST_EXIST);
+    $coursemodule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance, course', MUST_EXIST);
+
+    // Get the coursework record to retrieve the deadline
+    $courseworkRecord = $DB->get_record('coursework', ['id' => $coursemodule->instance], 'deadline', MUST_EXIST);
+
+    // Fetch custom field values from mdl_customfield_data
+    $sql = "SELECT cfd.value, cff.shortname
+            FROM {customfield_data} cfd
+            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
+            WHERE cfd.instanceid = :instanceid
+            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
+
+    $customFields = $DB->get_records_sql($sql, ['instanceid' => $coursemodule->course]);
+    $trace->output('Custom fields: ' . json_encode($customFields));
+
+    // Calculate default date: courseworkRecord->deadline + 35 days in case the custom fields are unpopulated
+    $defaultDate = strtotime('+35 days', $courseworkRecord->deadline);
+    $defaultDateFormatted = date('d-M-y', $defaultDate);
+
+    // Set default values for custom fields
+    $ssbsect_score_cutoff_date = $defaultDateFormatted;
+    $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
+
+    foreach ($customFields as $field) {
+        if ($field->shortname === 'ssbsect_score_cutoff_date') {
+            $ssbsect_score_cutoff_date = $field->value;
+        } else if ($field->shortname === 'ssbsect_reas_score_ctof_date') {
+            $ssbsect_reas_score_ctof_date = $field->value;
+        }
+    }
 
     $pattern = '/"group","id":(\d+)/';
     preg_match_all($pattern, $coursemodule->availability, $matches);
     $groupid = $matches[1];
-    $assessmentGroup = $DB->get_record('groups', array('id' => $groupid), 'id, idnumber', IGNORE_MISSING);
+    $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
 
     $deadline = $courseworkRecord->deadline;
-    if (substr($assessmentGroup->idnumber, -2) === "OE") {
-        $hardDeadline = $courseworkRecord->ssbsect_score_cutoff_date;
-    } else {
-        $hardDeadline = $courseworkRecord->ssbsect_reas_score_ctof_date;
-    }
 
+    // Use the retrieved custom field values to determine hard deadlines
+    if (substr($assessmentGroup->idnumber, -2) === 'OE') {
+        $hardDeadline = $ssbsect_score_cutoff_date;
+    } else {
+        $hardDeadline = $ssbsect_reas_score_ctof_date;
+    }
+    $trace->output("Hard Deadline: $hardDeadline");
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -256,21 +313,25 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
     $userServiceNeedsDays = $userExtensionWeeks->data * 7;
 
-    $extensionRecord = $DB->get_record_sql(
-        "SELECT extension_amount
-            FROM {local_obu_assessment_ext}
-            WHERE " . $DB->sql_compare_text('student_id') . " = ?
-            AND " . $DB->sql_compare_text('assessment_id') . " = ?
-            AND is_processed = true
-            AND extension_amount > 0
-            ORDER BY id DESC
-            LIMIT 1",
-            [$user->username, $courseModuleId]);
+    $sql = '
+    SELECT extension_amount
+    FROM {local_obu_assessment_ext}
+    WHERE ' . $DB->sql_compare_text('student_id') . ' = ?
+      AND ' . $DB->sql_compare_text('assessment_id') . ' = ?
+      AND is_processed = true
+      AND extension_amount > 0
+    ORDER BY id DESC
+    LIMIT 1';
+
+    $params = [$user->username, $courseModuleId];
+
+    $extensionRecord = $DB->get_record_sql($sql, $params);
 
     if ($extensionRecord) {
+
         if ($extensionRecord->extension_amount == 0) {
             $temporaryExemption = true;
-        } elseif ($extensionRecord->extension_amount == -1) {
+        } else if ($extensionRecord->extension_amount == -1) {
             $deletion = true;
         } else {
             local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
@@ -281,56 +342,108 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
         local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
         $newDeadline = calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
     }
+    $trace->output("New Deadline is $newDeadline");
+
+    $dateTime = DateTime::createFromFormat('d/m/Y H:i', $newDeadline);
+    if ($dateTime === false) {
+        $trace->output('Failed to parse date. Please check the format.');
+    } else {
+        $newDeadlineTimestamp = $dateTime->getTimestamp();
+        $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    }
+    $trace->output("Deadline timestamp = $deadline");
+    if ($newDeadlineTimestamp == $deadline) {
+        // Deadlines are the same, skip extension submission
+        $trace->output("No change in deadline, skipping submission");
+        return;
+    }
 
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
 
-function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $additionalDays, $initialMarkingDeadlineTimestamp) {
+function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $additionalDays, $hardDeadline) {
+    // Convert deadline timestamp into DateTime object
     $deadlineDate = (new DateTime())->setTimestamp($deadlineTimestamp);
-    $trace->output("Current Deadline: " . $deadlineDate->format('d/m/Y H:i'));
+    $trace->output('Current Deadline: ' . $deadlineDate->format('d/m/Y H:i'));
 
-    $newDeadlineDate = clone $deadlineDate;  // Clone to avoid modifying original
-    $newDeadlineDate->modify("+$additionalDays days");
-    $newDeadline = $newDeadlineDate->format("d/m/Y H:i");
+    // Clone and modify the deadline to calculate the new deadline
+    $newDeadlineDate = clone $deadlineDate;
+    $newDeadlineDate->modify("+$additionalDays days"); // Add additional days
+    $newDeadline = $newDeadlineDate->format('d/m/Y H:i');
     $trace->output("New Deadline: $newDeadline");
 
+    $hardDeadlineDate = DateTime::createFromFormat('d-M-y H:i', $hardDeadline . ' 00:00');
 
-    if ($initialMarkingDeadlineTimestamp <= 0) {
-        $trace->output("Initial Marking Deadline set to 0. Setting to 28 days after deadline.");
-        $hardDeadlineDate = clone $deadlineDate;
-        $hardDeadlineDate->modify("+28 days");
-    } else {
-        $hardDeadlineDate = (new DateTime())->setTimestamp($initialMarkingDeadlineTimestamp);
-        $hardDeadlineDate->modify("-7 days");
+    if (!$hardDeadlineDate) {
+        // If parsing fails, log an error and return the new deadline
+        $trace->output("Invalid Hard Deadline format: $hardDeadline");
+        return $newDeadline;
     }
 
-    $hardDeadline = $hardDeadlineDate->format('d/m/Y H:i');
-    $trace->output("Hard Deadline: $hardDeadline");
+    // Set the time of the hard deadline to match the original deadline's time
+    $hardDeadlineDate->setTime((int) $deadlineDate->format('H'), (int) $deadlineDate->format('i'));
 
+    $trace->output('Hard Deadline: ' . $hardDeadlineDate->format('d/m/Y H:i'));
+
+    // Compare new deadline with hard deadline
     if ($newDeadlineDate > $hardDeadlineDate) {
-        $newDeadline = $hardDeadline;
+        $trace->output('New Deadline exceeds Hard Deadline. Adjusting to Hard Deadline.');
+        // If the new deadline exceeds the hard deadline, set the new deadline to the hard deadline
+        $newDeadlineDate = $hardDeadlineDate; // Use hard deadline
+        $newDeadline = $newDeadlineDate->format('d/m/Y H:i');
     }
 
     return $newDeadline;
 }
 
-function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\progress_trace $trace, $user, $courseModuleId, $extensionAmount) {
+function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\progress_trace $trace, $user, $courseModuleId,
+    $extensionAmount) {
     global $DB;
 
     // GET course module record
-    $courseModule = $DB->get_record('course_modules', array('id' => $courseModuleId), 'instance', MUST_EXIST);
-    $courseworkRecord = $DB->get_record('coursework', array('id' => $courseModule->instance), 'deadline, ssbsect_score_cutoff_date, ssbsect_reas_score_ctof_date', MUST_EXIST);
+    $courseModule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance, course', MUST_EXIST);
+
+    // Get the coursework record to retrieve the deadline
+    $courseworkRecord = $DB->get_record('coursework', ['id' => $courseModule->instance], 'deadline', MUST_EXIST);
+
+    // Fetch custom field values from mdl_customfield_data
+    $sql = "SELECT cfd.value, cff.shortname
+            FROM {customfield_data} cfd
+            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
+            WHERE cfd.instanceid = :instanceid
+            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
+
+    $customFields = $DB->get_records_sql($sql, ['instanceid' => $courseModule->course]);
+    $trace ->output("Custom fields: " . json_encode($customFields));
+
+    // Calculate default date: courseworkRecord->deadline + 35 days in case the custom fields are unpopulated
+    $defaultDate = strtotime('+35 days', $courseworkRecord->deadline);
+    $defaultDateFormatted = date('d-M-y', $defaultDate);
+
+    // Set default values for custom fields
+    $ssbsect_score_cutoff_date = $defaultDateFormatted;
+    $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
+
+    foreach ($customFields as $field) {
+        if ($field->shortname === 'ssbsect_score_cutoff_date') {
+            $ssbsect_score_cutoff_date = $field->value;
+        } else if ($field->shortname === 'ssbsect_reas_score_ctof_date') {
+            $ssbsect_reas_score_ctof_date = $field->value;
+        }
+    }
 
     $pattern = '/"group","id":(\d+)/';
     preg_match_all($pattern, $courseModule->availability, $matches);
     $groupid = $matches[1];
-    $assessmentGroup = $DB->get_record('groups', array('id' => $groupid), 'id, idnumber', IGNORE_MISSING);
+    $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
 
     $deadline = $courseworkRecord->deadline;
-    if (substr($assessmentGroup->idnumber, -2) === "OE") {
-        $hardDeadline = $courseworkRecord->ssbsect_score_cutoff_date;
+
+    // Use the retrieved custom field values to determine hard deadlines
+    if (substr($assessmentGroup->idnumber, -2) === 'OE') {
+        $hardDeadline = $ssbsect_score_cutoff_date;
     } else {
-        $hardDeadline = $courseworkRecord->ssbsect_reas_score_ctof_date;
+        $hardDeadline = $ssbsect_reas_score_ctof_date;
     }
 
     $sql = "SELECT uid.data
@@ -344,16 +457,32 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
 
     if ($extensionAmount == 0) {
         $temporaryExemption = true;
-    } elseif ($extensionAmount == -1) {
+    } else if ($extensionAmount == -1) {
         $deletion = true;
     } else {
         local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
         $additionalDays = $userServiceNeedsDays + $extensionAmount;
         $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
+    $trace->output("New Deadline is $newDeadline");
+
+    $dateTime = DateTime::createFromFormat('d/m/Y H:i', $newDeadline);
+    if ($dateTime === false) {
+        $trace->output('Failed to parse date. Please check the format.');
+    } else {
+        $newDeadlineTimestamp = $dateTime->getTimestamp();
+        $trace->output("New deadline timestamp = $newDeadlineTimestamp");
+    }
+    $trace->output("Deadline timestamp = $deadline");
+    if ($newDeadlineTimestamp == $deadline) {
+        // Deadlines are the same, skip extension submission
+        $trace->output('No change in deadline, skipping submission');
+        return;
+    }
 
     local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
 }
+
 
 //function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
 //    $groupIds = [];
@@ -387,52 +516,64 @@ function local_obu_find_common_assessment_group($assessmentGroups, $userAssessme
 function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstanceId) {
     global $DB;
 
+    // Get the relevant course module details for this instance ID.
     $sql = "SELECT cm.id, cm.course, cm.availability
-        FROM {course_modules} cm
-        JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = " . $courseModuleInstanceId;
+            FROM {course_modules} cm
+            JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
+            WHERE cm.instance = :instanceid";
+    $courseModule = $DB->get_record_sql($sql, ['instanceid' => $courseModuleInstanceId]);
 
-    $courseModule = $DB->get_record_sql($sql);
+    // Get course information and check if idnumber exists (external system identifier).
+    $course = $DB->get_record('course', ['id' => $courseModule->course], 'idnumber', MUST_EXIST);
+    if (!$course->idnumber) {
+        return; // Exit if there's no idnumber.
+    }
 
-    if(!$courseModule) {
-        $trace->output("No courseModule found");
-        $trace->output("Course module instance ID: $courseModuleInstanceId");
+    if (!$courseModule) {
+        $trace->output("No course module found for instance ID: $courseModuleInstanceId");
+        return;
     }
 
     $newRestrictions = $courseModule->availability;
-    $trace->output("Availablity: $newRestrictions");
+    $trace->output("Availability: $newRestrictions");
 
     $courseContext = \context_course::instance($courseModule->course);
-    $users = get_enrolled_users($courseContext);
-    $trace->output("Users on Course: " . count($users));
+    $users = get_enrolled_students($courseModule->course);
+    $trace->output('Users on Course: ' . count($users));
 
     $modinfo = get_fast_modinfo($courseModule->course);
+    $courseModuleUsers = [];
 
-    $courseModuleUsers = array();
     try {
         $cm_info = $modinfo->get_cm($courseModule->id);
         $info = new \core_availability\info_module($cm_info);
         $courseModuleUsers = $info->filter_user_list($users);
-    }
-    catch (\moodle_exception $e) {
-        $trace->output("Unable to use availablity API: " . $e->errorcode);
-        $pattern = '/"group","id":(\d+)/';
-        preg_match_all($pattern, $newRestrictions, $matches);
+    } catch (\moodle_exception $e) {
+        $trace->output('Availability API error: ' . $e->errorcode);
+        $groupIds = [];
+        preg_match_all('/"group","id":(\d+)/', $newRestrictions, $matches);
         $groupIds = $matches[1];
-        foreach ($groupIds as $groupId){
+
+        foreach ($groupIds as $groupId) {
             $groupUsers = local_obu_get_users_by_assessment_group($groupId);
             $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
         }
     }
 
-    $trace->output("Filtered Users: " . count($courseModuleUsers));
+    if (empty($courseModuleUsers)) {
+        $trace->output('No valid users found with permissions; task creation aborted.');
+        return;
+    }
+
+    $trace->output('Filtered Users: ' . count($courseModuleUsers));
+    $trace->output('Filtered User IDs: ' . implode(', ', array_map(function($user) {
+            return $user->id;
+        }, $courseModuleUsers)));
 
     $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
     $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
 
-    $trace->output("Task created");
-
+    $trace->output('Task created');
     \core\task\manager::queue_adhoc_task($task);
-
-    $trace->output("Task queued");
+    $trace->output('Task queued');
 }

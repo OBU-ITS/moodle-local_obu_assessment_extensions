@@ -72,5 +72,18 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2024101101, 'local', 'obu_assessment_extensions');
     }
 
+    if ($oldversion < 2025040300) {
+        global $DB;
+
+        // Delete all tasks specific to the class
+        $DB->delete_records('task_adhoc', ['classname' => '\local_obu_assessment_extensions\task\adhoc_process_deadline_change']);
+
+        // Output a debug message during upgrade (for CLI or logs)
+        mtrace('Deleted old failing ad hoc tasks related to \local_obu_assessment_extensions\task\adhoc_process_deadline_change.');
+
+        // Save the upgrade point
+        upgrade_plugin_savepoint(true, 2025040300, 'local', 'obu_assessment_extensions');
+    }
+
     return $result;
 }
