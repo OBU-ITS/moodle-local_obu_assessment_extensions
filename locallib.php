@@ -34,6 +34,8 @@ defined('MOODLE_INTERNAL') || die();
  * @return bool True if user added successfully or the user is already a
  * member of the group, false otherwise.
  */
+
+// Saves each extension to the table of what we've sent to CoSector?
 function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $courseModuleId=null) {
     global $DB;
 
@@ -55,7 +57,7 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
  * @param int $courseid The course ID to fetch enrolled students for.
  * @return array An array of enrolled students (user id and username).
  */
-function get_enrolled_students($courseid) : array {
+function local_obu_assess_ex_get_enrolled_students($courseid) : array {
     global $DB;
 
     $sql = "SELECT DISTINCT u.id, u.username
@@ -546,7 +548,7 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
     $trace->output("Availability: $newRestrictions");
 
     $courseContext = \context_course::instance($courseModule->course);
-    $users = get_enrolled_students($courseModule->course);
+    $users = local_obu_assess_ex_get_enrolled_students($courseModule->course);
     $trace->output('Users on Course: ' . count($users));
 
     $modinfo = get_fast_modinfo($courseModule->course);
