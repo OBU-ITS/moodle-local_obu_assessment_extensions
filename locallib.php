@@ -340,13 +340,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
     $trace->output('Assessment Group IDNumber: ' . json_encode($assessmentGroup->idnumber));
 
-
-    // Use the retrieved custom field values to determine hard deadlines
-    if (substr($assessmentGroup->idnumber, -2) === 'OE') {
-        $hardDeadline = $ssbsect_score_cutoff_date;
-    } else {
-        $hardDeadline = $ssbsect_reas_score_ctof_date;
-    }
+    $hardDeadline = local_obu_assess_ex_calculate_harddeadline($assessmentGroup->idnumber, $customFields->ssbsect_score_cutoff_date, $customFields->ssbsect_reas_score_ctof_date);
     $trace->output("Hard Deadline: $hardDeadline");
 
     $sql = "SELECT uid.data
