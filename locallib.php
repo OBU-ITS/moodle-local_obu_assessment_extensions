@@ -82,11 +82,11 @@ function local_obu_assess_ex_get_enrolled_students($courseid) : array {
  *               - 'ssbsect_score_cutoff_date'
  *               - 'ssbsect_reas_score_ctof_date'
  */
-function local_obu_assess_ex_fetch_banner_cutoff_dates($courseId, $defaultDeadline) {
+function local_obu_assess_ex_fetch_banner_cutoff_dates($course, $dueDate) {
     global $DB;
 
     // Define default date as 35 days after baseline deadline
-    $defaultDate = strtotime('+35 days', $defaultDeadline);
+    $defaultDate = strtotime('+35 days', $dueDate);
     $defaultDateFormatted = date('d-M-y', $defaultDate);
 
     // Default field values
@@ -102,7 +102,7 @@ function local_obu_assess_ex_fetch_banner_cutoff_dates($courseId, $defaultDeadli
             WHERE cfd.instanceid = :instanceid
             AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
 
-    $result = $DB->get_records_sql($sql, ['instanceid' => $courseId]);
+    $result = $DB->get_records_sql($sql, ['instanceid' => $course]);
     foreach ($result as $field) {
         if ($field->shortname === 'ssbsect_score_cutoff_date') {
             $customFieldValues['ssbsect_score_cutoff_date'] = $field->value;
@@ -112,6 +112,27 @@ function local_obu_assess_ex_fetch_banner_cutoff_dates($courseId, $defaultDeadli
     }
 
     return $customFieldValues;
+}
+
+/**
+ * Calculate the hard deadline for an assessment group.
+ *
+ * @param string $groupIdnumber The idnumber of the assessment group.
+ * @param string $OECutoffDate The score cutoff date for original assessment.
+ * @param string $RECutoffDate The score cutoff date for resit assessment.
+ *
+ * @return array An array containing 'hardDeadline' and 'deadline'.
+ */
+function local_obu_assess_ex_calculate_harddeadline($groupIdnumber, $OECutoffDate, $RECutoffDate) {
+    // Determine the hard deadline
+    if (substr($groupIdnumber, -2) === 'OE') {
+        $hardDeadline = $OECutoffDate;
+    } else {
+        $hardDeadline = $RECutoffDate;
+    }
+
+    // In this case, assume directly using hardDeadline as "deadline" (can differ if needed)
+    return $hardDeadline;
 }
 
 
@@ -307,35 +328,10 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
 
     // Get the coursework record to retrieve the deadline
     $courseworkRecord = $DB->get_record('coursework', ['id' => $coursemodule->instance], 'deadline', MUST_EXIST);
+    $deadline = $courseworkRecord->deadline;
 
-    // Fetch custom field values from mdl_customfield_data
-    $sql = "SELECT cfd.value, cff.shortname
-            FROM {customfield_data} cfd
-            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
-            WHERE cfd.instanceid = :instanceid
-            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
-
-    $customFields = $DB->get_records_sql($sql, ['instanceid' => $coursemodule->course]);
+    $customFields = local_obu_assess_ex_fetch_banner_cutoff_dates($coursemodule->course, $deadline);
     $trace->output('Custom fields: ' . json_encode($customFields));
-
-    // Calculate default date: courseworkRecord->deadline + 35 days in case the custom fields are unpopulated
-    $defaultDate = strtotime('+35 days', $courseworkRecord->deadline);
-    $defaultDateFormatted = date('d-M-y', $defaultDate);
-
-    // Set default values for custom fields
-    $ssbsect_score_cutoff_date = $defaultDateFormatted;
-    $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
-
-    foreach ($customFields as $field) {
-        if ($field->shortname === 'ssbsect_score_cutoff_date') {
-            $ssbsect_score_cutoff_date = $field->value;
-        } else if ($field->shortname === 'ssbsect_reas_score_ctof_date') {
-            $ssbsect_reas_score_ctof_date = $field->value;
-        }
-    }
-
-    $trace->output("ssbsect_score_cutoff_date: $ssbsect_score_cutoff_date");
-    $trace->output("ssbsect_reas_score_ctof_date: $ssbsect_reas_score_ctof_date");
 
     $pattern = '/"group","id":(\d+)/';
     preg_match_all($pattern, $coursemodule->availability, $matches);
@@ -344,7 +340,6 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
     $trace->output('Assessment Group IDNumber: ' . json_encode($assessmentGroup->idnumber));
 
-    $deadline = $courseworkRecord->deadline;
 
     // Use the retrieved custom field values to determine hard deadlines
     if (substr($assessmentGroup->idnumber, -2) === 'OE') {
