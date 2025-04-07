@@ -72,6 +72,49 @@ function local_obu_assess_ex_get_enrolled_students($courseid) : array {
     return $DB->get_records_sql($sql, [$courseid]);
 }
 
+/**
+ * Fetch custom date field values for a course and set default values if unset.
+ *
+ * @param int $courseId The ID of the course.
+ * @param int $defaultDeadline The default deadline (used for fallback dates).
+ *
+ * @return array An associative array of custom field values with keys:
+ *               - 'ssbsect_score_cutoff_date'
+ *               - 'ssbsect_reas_score_ctof_date'
+ */
+function local_obu_assess_ex_fetch_banner_cutoff_dates($courseId, $defaultDeadline) {
+    global $DB;
+
+    // Define default date as 35 days after baseline deadline
+    $defaultDate = strtotime('+35 days', $defaultDeadline);
+    $defaultDateFormatted = date('d-M-y', $defaultDate);
+
+    // Default field values
+    $customFieldValues = [
+        'ssbsect_score_cutoff_date' => $defaultDateFormatted,
+        'ssbsect_reas_score_ctof_date' => $defaultDateFormatted,
+    ];
+
+    // SQL query to fetch custom field values
+    $sql = "SELECT cfd.value, cff.shortname
+            FROM {customfield_data} cfd
+            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
+            WHERE cfd.instanceid = :instanceid
+            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
+
+    $result = $DB->get_records_sql($sql, ['instanceid' => $courseId]);
+    foreach ($result as $field) {
+        if ($field->shortname === 'ssbsect_score_cutoff_date') {
+            $customFieldValues['ssbsect_score_cutoff_date'] = $field->value;
+        } elseif ($field->shortname === 'ssbsect_reas_score_ctof_date') {
+            $customFieldValues['ssbsect_reas_score_ctof_date'] = $field->value;
+        }
+    }
+
+    return $customFieldValues;
+}
+
+
 function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, $deleteExisting = null) {
     global $DB;
 
