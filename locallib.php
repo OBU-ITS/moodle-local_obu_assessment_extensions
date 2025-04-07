@@ -289,10 +289,15 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
         }
     }
 
+    $trace->output("ssbsect_score_cutoff_date: $ssbsect_score_cutoff_date");
+    $trace->output("ssbsect_reas_score_ctof_date: $ssbsect_reas_score_ctof_date");
+
     $pattern = '/"group","id":(\d+)/';
     preg_match_all($pattern, $coursemodule->availability, $matches);
     $groupid = $matches[1];
+    $trace->output('Extracted Group ID: ' . json_encode($groupid));
     $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
+    $trace->output('Assessment Group IDNumber: ' . json_encode($assessmentGroup->idnumber));
 
     $deadline = $courseworkRecord->deadline;
 
@@ -423,6 +428,9 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     // Set default values for custom fields
     $ssbsect_score_cutoff_date = $defaultDateFormatted;
     $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
+
+    $trace->output("ssbsect_score_cutoff_date: $ssbsect_score_cutoff_date");
+    $trace->output("ssbsect_reas_score_ctof_date: $ssbsect_reas_score_ctof_date");
 
     foreach ($customFields as $field) {
         if ($field->shortname === 'ssbsect_score_cutoff_date') {
