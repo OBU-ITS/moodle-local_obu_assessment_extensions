@@ -18,46 +18,163 @@
  * Plugin local library methods
  *
  * @package    local_obu_assessment_extensions
- * @author     Emir Kamel
- * @copyright  2024, Oxford Brookes University {@link http://www.brookes.ac.uk/}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Adds a known exceptional circumstance record to the table
+ * Fetch course module details based on a given course module ID.
  *
- * @param string $studentIdNumber   The student id number
- * @param string $extensionDays The number of days' extension provided to the student
- * @param string $assessmentIdNumber The assessment id number (Optional)
- * @return bool True if user added successfully or the user is already a
- * member of the group, false otherwise.
+ * @param int $courseModuleId The ID of the course module to fetch.
+ * @param string $fields A comma-separated list of fields to return (default is '*').
+ *
+ * @return stdClass|null The course module as an object, or null if not found.
  */
-
-// Saves each extension to the table of what we've sent to CoSector?
-function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNumber, $extensionDays, $courseModuleId=null) {
+function local_obu_assessment_ext_fetch_course_module($courseModuleId, $fields = '*'): ?stdClass {
     global $DB;
-
-    $extension = new stdClass();
-    $extension->student_id   = $studentIdNumber;
-    $extension->assessment_id    = $courseModuleId; // course module id
-    $extension->extension_amount = $extensionDays;
-    $extension->is_processed = 0;
-    $extension->timestamp = time();
-
-    $DB->insert_record('local_obu_assessment_ext', $extension);
-
-    return true;
+    return $DB->get_record('course_modules', ['id' => $courseModuleId], $fields, MUST_EXIST);
 }
 
 /**
- * Retrieve all students db or meta enrolled in a given course with the 'student' (roleid = 5) role.
+ * Fetch course details, including custom field data, based on a given course ID.
  *
- * @param int $courseid The course ID to fetch enrolled students for.
- * @return array An array of enrolled students (user id and username).
+ * @param int $courseId The ID of the course to fetch.
+ * @param string $fields A comma-separated list of fields to fetch from the 'course' table (default: 'id, idnumber').
+ *
+ * @return stdClass|null An object containing the course details. Additional keys:
+ *                       - 'score_cutoff_date' (optional): Custom date field for score cutoff.
+ *                       - 'reas_score_cutoff_date' (optional): Custom date field for reassessment score cutoff.
+ *                       Returns null if the course is not found.
  */
-function local_obu_assess_ex_get_enrolled_students($courseid) : array {
+function local_obu_assessment_ext_fetch_course_details($courseId, $fields = 'id, idnumber'): ?stdClass {
+    global $DB;
+
+    $course = $DB->get_record('course', ['id' => $courseId], $fields);
+
+    if (!$course) {
+        return null; // Course not found
+    }
+
+    // Fetch custom field data with explicit SQL
+    $sql = "SELECT cfd.value, cff.shortname
+            FROM {customfield_data} cfd
+            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
+            WHERE cfd.instanceid = :courseid
+            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
+
+    $customFields = $DB->get_records_sql($sql, ['courseid' => $courseId]);
+
+    // Attach custom field values to the course object
+    foreach ($customFields as $field) {
+        if ($field->shortname === 'ssbsect_score_cutoff_date') {
+            $course->score_cutoff_date = $field->value;
+        } elseif ($field->shortname === 'ssbsect_reas_score_ctof_date') {
+            $course->reas_score_cutoff_date = $field->value;
+        }
+    }
+
+    return $course;
+}
+
+/**
+ * Check if a group ID number matches the format for assessment groups.
+ *
+ * @param string $idnumber The group ID number to validate.
+ *
+ * @return bool True if the ID number matches the assessment group format, false otherwise.
+ */
+function local_obu_assessment_ext_is_assessment_group_idnumber($idnumber): bool {
+    return preg_match('/^\d{4}\..+?_.+?_\d+_\d{6}_\d+_.+?-\d+_\d+_.{1,2}$/', $idnumber) === 1;
+}
+
+/**
+ * Fetch assessment groups associated with either a course module or a user.
+ *
+ * @param string $context The context for the fetch ('by_assessment' or 'by_user').
+ * @param int|string $identifier The course module ID (for 'by_assessment') or user ID number (for 'by_user').
+ *
+ * @return array An array of assessment groups. Each group contains:
+ *               - 'id': The group ID.
+ *               - 'idnumber': The group ID number.
+ *               - 'name': The group name.
+ */
+function local_obu_assessment_ext_get_assessment_groups($context, $identifier): array {
+    global $DB;
+
+    $assessmentGroups = [];
+
+    if ($context === 'by_assessment') {
+        // Fetch groups by course module ID
+        $courseModuleId = $identifier;
+
+        // Fetch the course module data
+        $courseModule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'id, availability');
+        if (empty($courseModule->availability)) {
+            return $assessmentGroups;
+        }
+
+        $availability = json_decode($courseModule->availability, true);
+
+        // Extract groups from availability JSON
+        if (!empty($availability['c'])) {
+            foreach ($availability['c'] as $condition) {
+                if ($condition['type'] === 'group' && !empty($condition['id'])) {
+                    $group = $DB->get_record('groups', ['id' => $condition['id']], 'id, idnumber, name', IGNORE_MISSING);
+
+                    if ($group && local_obu_assessment_ext_is_assessment_group_idnumber($group->idnumber)) {
+                        $assessmentGroups[] = [
+                            'id' => $group->id,
+                            'idnumber' => $group->idnumber,
+                            'name' => $group->name,
+                        ];
+                    }
+                }
+            }
+        }
+    } elseif ($context === 'by_user') {
+        // Fetch groups by user ID number
+        $userIdNumber = $identifier;
+
+        // Fetch user record
+        $user = $DB->get_record('user', ['username' => $userIdNumber], 'id');
+        if (!$user) {
+            return $assessmentGroups;
+        }
+
+        // Fetch group IDs the user is a member of
+        $groupIds = $DB->get_records('groups_members', ['userid' => $user->id], '', 'groupid');
+
+        if (!empty($groupIds)) {
+            $groupIds = array_keys($groupIds);
+            [$inSql, $params] = $DB->get_in_or_equal($groupIds, SQL_PARAMS_QM, '', true);
+            $groups = $DB->get_records_select('groups', "id $inSql", $params, '', 'id, idnumber, name');
+
+            foreach ($groups as $group) {
+                if (local_obu_assessment_ext_is_assessment_group_idnumber($group->idnumber)) {
+                    $assessmentGroups[] = [
+                        'id' => $group->id,
+                        'idnumber' => $group->idnumber,
+                        'name' => $group->name,
+                    ];
+                }
+            }
+        }
+    }
+
+    return $assessmentGroups;
+}
+
+/**
+ * Fetch users enrolled in a course with a student role via database or meta enrolment methods.
+ *
+ * @param int $courseid The ID of the course to fetch enrolled students for.
+ *
+ * @return array An array of enrolled users. Each entry contains:
+ *               - 'id': The user ID.
+ *               - 'username': The username of the enrolled user.
+ */
+function local_obu_assess_ext_get_enrolled_students($courseid): array {
     global $DB;
 
     $sql = "SELECT DISTINCT u.id, u.username
@@ -73,57 +190,18 @@ function local_obu_assess_ex_get_enrolled_students($courseid) : array {
 }
 
 /**
- * Fetch custom date field values for a course and set default values if unset.
+ * Calculate the hard deadline for a given group, based on cutoff dates.
  *
- * @param int $courseId The ID of the course.
- * @param int $defaultDeadline The default deadline (used for fallback dates).
+ * This function returns the appropriate hard deadline based on the group's ID number
+ * and the provided cutoff dates for Online Exams (OE) and Reassessments (RE).
  *
- * @return array An associative array of custom field values with keys:
- *               - 'ssbsect_score_cutoff_date'
- *               - 'ssbsect_reas_score_ctof_date'
+ * @param string $groupIdnumber The ID number of the group (used to determine deadline type).
+ * @param string|null $OECutoffDate The cutoff date for Online Exams (OE), or null if not set.
+ * @param string|null $RECutoffDate The cutoff date for Reassessments (RE), or null if not set.
+ *
+ * @return string|null The calculated hard deadline as a date string, or null if both dates are missing.
  */
-function local_obu_assess_ex_fetch_banner_cutoff_dates($course, $dueDate) {
-    global $DB;
-
-    // Define default date as 35 days after baseline deadline
-    $defaultDate = strtotime('+35 days', $dueDate);
-    $defaultDateFormatted = date('d-M-y', $defaultDate);
-
-    // Default field values
-    $customFieldValues = [
-        'ssbsect_score_cutoff_date' => $defaultDateFormatted,
-        'ssbsect_reas_score_ctof_date' => $defaultDateFormatted,
-    ];
-
-    // SQL query to fetch custom field values
-    $sql = "SELECT cfd.value, cff.shortname
-            FROM {customfield_data} cfd
-            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
-            WHERE cfd.instanceid = :instanceid
-            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
-
-    $result = $DB->get_records_sql($sql, ['instanceid' => $course]);
-    foreach ($result as $field) {
-        if ($field->shortname === 'ssbsect_score_cutoff_date') {
-            $customFieldValues['ssbsect_score_cutoff_date'] = $field->value;
-        } elseif ($field->shortname === 'ssbsect_reas_score_ctof_date') {
-            $customFieldValues['ssbsect_reas_score_ctof_date'] = $field->value;
-        }
-    }
-
-    return $customFieldValues;
-}
-
-/**
- * Calculate the hard deadline for an assessment group.
- *
- * @param string $groupIdnumber The idnumber of the assessment group.
- * @param string $OECutoffDate The score cutoff date for original assessment.
- * @param string $RECutoffDate The score cutoff date for resit assessment.
- *
- * @return array An array containing 'hardDeadline' and 'deadline'.
- */
-function local_obu_assess_ex_calculate_harddeadline($groupIdnumber, $OECutoffDate, $RECutoffDate) {
+function local_obu_assess_ext_calculate_harddeadline(string $groupIdnumber, ?string $OECutoffDate, ?string $RECutoffDate): ?string {
     // Determine the hard deadline
     if (substr($groupIdnumber, -2) === 'OE') {
         $hardDeadline = $OECutoffDate;
@@ -131,6 +209,6 @@ function local_obu_assess_ex_calculate_harddeadline($groupIdnumber, $OECutoffDat
         $hardDeadline = $RECutoffDate;
     }
 
-    // In this case, assume directly using hardDeadline as "deadline" (can differ if needed)
-    return $hardDeadline;
+    return $hardDeadline; // May return null if no valid dates are available
 }
+

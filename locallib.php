@@ -57,7 +57,7 @@ function local_obu_assess_ex_store_known_exceptional_circumstances($studentIdNum
  * @param int $courseid The course ID to fetch enrolled students for.
  * @return array An array of enrolled students (user id and username).
  */
-function local_obu_assess_ex_get_enrolled_students($courseid) : array {
+function local_obu_assess_ext_get_enrolled_students($courseid) : array {
     global $DB;
 
     $sql = "SELECT DISTINCT u.id, u.username
@@ -313,7 +313,7 @@ function local_obu_get_assessment_groups_by_assessment($courseModuleId) {
 
 function local_obu_determine_assessment_group($courseModuleId, $user) {
     // Get groups tied to the course module
-    $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
+    $assessmentGroups = local_obu_assessment_ext_get_assessment_groups_by_assessment($courseModuleId);
 
     // Get groups associated with the specific user
     $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
@@ -343,7 +343,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
     $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
     $trace->output('Assessment Group IDNumber: ' . json_encode($assessmentGroup->idnumber));
 
-    $hardDeadline = local_obu_assess_ex_calculate_harddeadline($assessmentGroup->idnumber, $customFields->ssbsect_score_cutoff_date, $customFields->ssbsect_reas_score_ctof_date);
+    $hardDeadline = local_obu_assess_ext_calculate_harddeadline($assessmentGroup->idnumber, $customFields->ssbsect_score_cutoff_date, $customFields->ssbsect_reas_score_ctof_date);
     $trace->output("Hard Deadline: $hardDeadline");
 
     $sql = "SELECT uid.data
@@ -569,7 +569,7 @@ function local_obu_create_task_for_course_mod_change($trace, $courseModuleInstan
     $trace->output("Availability: $newRestrictions");
 
     $courseContext = \context_course::instance($courseModule->course);
-    $users = local_obu_assess_ex_get_enrolled_students($courseModule->course);
+    $users = local_obu_assess_ext_get_enrolled_students($courseModule->course);
     $trace->output('Users on Course: ' . count($users));
 
     $modinfo = get_fast_modinfo($courseModule->course);
