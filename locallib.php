@@ -136,21 +136,8 @@ function local_obu_assess_ex_calculate_harddeadline($groupIdnumber, $OECutoffDat
 }
 
 
-function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, $deleteExisting = null) {
+function local_obu_submit_due_date_change(\progress_trace $trace, $user, $courseModuleId, $newDeadline, $temporaryExemption = null, $deletion = null, $deleteExisting = null, $assessmentGroup = null) {
     global $DB;
-
-    $sql = "SELECT course FROM {course_modules} WHERE id = :cmid";
-    $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
-    $course = $DB->get_record('course', array('id' => $courseModule->course), 'idnumber', MUST_EXIST);
-
-    if (!$course->idnumber) {
-        $trace->output("Skipping due date change for course with no idnumber");
-        return;
-    }
-
-    $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
-    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
-    $assessmentGroup = local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
 
     if ($temporaryExemption) {
         $conditions = [
@@ -289,34 +276,50 @@ function local_obu_get_assessments_by_assessment_group($assessmentGroup): array 
 
 function local_obu_get_assessment_groups_by_assessment($courseModuleId) {
     global $DB;
-    $assessmentGroups = array();
-    $sql = "SELECT * FROM {course_modules} WHERE id = :cmid";
+
+    $assessmentGroups = [];
+
+    // Fetch the course module record
+    $sql = 'SELECT * FROM {course_modules} WHERE id = :cmid';
     $courseModule = $DB->get_record_sql($sql, ['cmid' => $courseModuleId]);
 
+    // If availability is set, decode and parse it
     if (!empty($courseModule->availability)) {
+        $availability = json_decode($courseModule->availability, true);
 
-        $pattern = '/"group","id":(\d+)/';
-        preg_match_all($pattern, $courseModule->availability, $matches);
-        $groupids = $matches[1];
-
-        foreach ($groupids as $groupid){
-            $group = $DB->get_record('groups', array('id' => $groupid), '*', IGNORE_MISSING);
-            $assessmentGroups[] = $group;
+        // Navigate the availability JSON (assuming standard structure)
+        if (!empty($availability['c'])) {
+            foreach ($availability['c'] as $condition) {
+                // We're only interested in the first OR group of type "group"
+                if ($condition['op'] === '|' && !empty($condition['c'])) {
+                    foreach ($condition['c'] as $groupCondition) {
+                        if ($groupCondition['type'] === 'group' && !empty($groupCondition['id'])) {
+                            // Fetch and add the group to the results
+                            $group = $DB->get_record('groups', ['id' => $groupCondition['id']], '*', IGNORE_MISSING);
+                            if ($group) {
+                                $assessmentGroups[] = $group;
+                            }
+                        }
+                    }
+                    // Break after processing the first OR condition
+                    break;
+                }
+            }
         }
-
-//        $decodedRestrictions = json_decode($courseModule->availability, true);
-//
-//        if (!empty($decodedRestrictions['c'])) {
-//            foreach ($decodedRestrictions['c'] as $condition) {
-//                if ($condition['type'] === 'group' && !empty($condition['id'])) {
-//                    $group = $DB->get_record('groups', array('id' => $condition['id']), '*', MUST_EXIST);
-//                    $assessmentGroups[] = $group;
-//                }
-//            }
-//        }
     }
 
     return $assessmentGroups;
+}
+
+function local_obu_determine_assessment_group($courseModuleId, $user) {
+    // Get groups tied to the course module
+    $assessmentGroups = local_obu_get_assessment_groups_by_assessment($courseModuleId);
+
+    // Get groups associated with the specific user
+    $userAssessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
+
+    // Find a common assessment group between course module and user groups
+    return local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups);
 }
 
 //assessment in this case is the cmid and the user variable is the user object. Trace is optional
@@ -373,12 +376,12 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
         } else if ($extensionRecord->extension_amount == -1) {
             $deletion = true;
         } else {
-            local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
+            local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $assessmentGroup);
             $additionalDays = $userServiceNeedsDays + $extensionRecord->extension_amount;
             $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
         }
     } else {
-        local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
+        local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $assessmentGroup);
         $newDeadline = calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
     }
     $trace->output("New Deadline is $newDeadline");
@@ -397,7 +400,7 @@ function local_obu_recalculate_due_for_assessment(\progress_trace $trace, $user,
         return;
     }
 
-    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
+    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, true, $assessmentGroup);
 }
 
 function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $additionalDays, $hardDeadline) {
@@ -502,7 +505,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     } else if ($extensionAmount == -1) {
         $deletion = true;
     } else {
-        local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true);
+        local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, true, true, $assessmentGroup);
         $additionalDays = $userServiceNeedsDays + $extensionAmount;
         $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
@@ -522,24 +525,10 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
         return;
     }
 
-    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion);
+    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, false, $assessmentGroup);
 }
 
-
-//function local_obu_get_groups_from_access_restrictions($decodedRestrictions): array {
-//    $groupIds = [];
-//
-//    if (isset($decodedRestrictions['c'])) {
-//        foreach ($decodedRestrictions['c'] as $condition) {
-//            if (isset($condition['type']) && $condition['type'] === 'group' && isset($condition['id'])) {
-//                $groupIds[] = $condition['id'];
-//            }
-//        }
-//    }
-//
-//    return $groupIds;
-//}
-
+// Find the first common assessment group between two arrays of assessment groups
 function local_obu_find_common_assessment_group($assessmentGroups, $userAssessmentGroups) {
     $userGroupIds = array();
     foreach ($userAssessmentGroups as $group) {
