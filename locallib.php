@@ -275,7 +275,7 @@ function local_obu_assessment_ext_get_user_assessment_group($user, $courseModule
     }
 
     // Fetch groups the user belongs to
-    $userGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->id);
+    $userGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
 
     if (empty($userGroups)) {
         $trace->output('User does not belong to any assessment groups.');
