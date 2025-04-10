@@ -4,21 +4,29 @@
 //  */
 
 namespace local_obu_assessment_extensions\test;
-global $CFG;
+global $CFG, $DB;
 
 require_once(__DIR__ . '/../../../config.php'); // Adjust the path as necessary
+require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
+
 
 defined('MOODLE_INTERNAL') || die();
-
-use local_obu_assessment_extensions\observers\user_profile_updated_observer;
-use core\event\user_updated;
 
 if (!is_siteadmin()) {
     // Redirect to the site homepage
     redirect(new \moodle_url('/')); // Redirects to the homepage
     die(); // Ensure the script stops execution after redirect
 }
-$userid = required_param('userid', PARAM_INT);
 
-$event = \core\event\user_updated::create_from_userid($userid);
-user_profile_updated_observer::user_profile_updated($event);
+//$sql = "SELECT cm.instance
+//            FROM {course_modules} cm
+//            JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'";
+//
+//$trace = new \null_progress_trace();
+//
+//$courseModuleInstanceIds = $DB->get_records_sql($sql);
+//foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
+//    local_obu_assessment_ext_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
+//}
+
+

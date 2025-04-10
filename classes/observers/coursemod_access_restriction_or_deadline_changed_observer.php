@@ -33,16 +33,14 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class coursemod_access_restriction_or_deadline_changed_observer {
     public static function coursemod_access_restriction_or_deadline_changed(\mod_coursework\event\coursework_settings_updated $event) {
-
-        $eventData = $event->get_data();
+        $courseworkInstanceId = $event->objectid;
         $eventDescription = $event->get_description();
-        $objectid = $eventData['objectid'];
 
         $trace = new \null_progress_trace();
-        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription);
+        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $courseworkInstanceId, $eventDescription);
     }
 
-    public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $objectid, $eventDescription){
+    public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $courseworkInstanceId, $eventDescription){
         global $DB;
 
         $description = strtolower($eventDescription);
@@ -52,54 +50,6 @@ class coursemod_access_restriction_or_deadline_changed_observer {
             return;
         }
 
-        $sql = "SELECT cm.id 
-        FROM {course_modules} cm
-        JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'
-        WHERE cm.instance = :objectid";
-
-        $cmid = $DB->get_record_sql($sql, ['objectid' => $objectid]);
-
-        if(!($courseModule = get_coursemodule_from_id('coursework', $cmid->id, 0, false, MUST_EXIST))) {
-            $trace->output("No courseModule found");
-            $trace->output("ObjectId: $objectid");
-        }
-
-        $newRestrictions = $courseModule->availability;
-        $trace->output("Availablity: $newRestrictions");
-
-        $courseContext = \context_course::instance($courseModule->course);
-        $users = get_enrolled_users($courseContext);
-        $trace->output("Users on Course: " . count($users));
-
-        $modinfo = get_fast_modinfo($courseModule->course);
-
-        $courseModuleUsers = array();
-        try {
-            $cm_info = $modinfo->get_cm($courseModule->id);
-            $info = new \core_availability\info_module($cm_info);
-            $courseModuleUsers = $info->filter_user_list($users);
-        }
-        catch (\moodle_exception $e) {
-            $trace->output("Unable to use availablity API: " . $e->errorcode);
-            $pattern = '/"group","id":(\d+)/';
-            preg_match_all($pattern, $newRestrictions, $matches);
-            $groups = $matches[1];
-
-            foreach ($groups as $group){
-                $groupUsers = local_obu_get_users_by_assessment_group($group);
-                $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
-            }
-        }
-
-        $trace->output("Filtered Users: " . count($courseModuleUsers));
-
-        $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
-        $task->set_custom_data(['assessment' => $cmid, 'assessmentUsers' => $courseModuleUsers]);
-
-        $trace->output("Task created");
-
-        \core\task\manager::queue_adhoc_task($task);
-
-        $trace->output("Task queued");
+        local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseworkInstanceId);
     }
 }

@@ -65,21 +65,21 @@ class local_obu_assessment_extensions_external extends external_api {
         }
 
         if ($groupidnumber == null) {
-            $assessmentgroups = local_obu_get_assessment_groups_by_user($studentidnumber);
+            $assessmentgroups = local_obu_assessment_ext_get_assessment_groups('by_user',$studentidnumber);
 
             foreach ($assessmentgroups as $assessmentgroup){
-                $assessments = local_obu_get_assessments_by_assessment_group($assessmentgroup);
-                foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
+                $assessments = local_obu_assessment_ext_get_assessments_by_group($assessmentgroup);
+                foreach ($assessments as $courseModule){
+                    local_obu_assessment_ext_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
                 }
             }
         } else {
             $sql = "SELECT * FROM {groups} WHERE idnumber = :groupidnumber";
             $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => $groupidnumber));
             foreach ($groupobjects as $groupobject) {
-                $assessments = local_obu_get_assessments_by_assessment_group($groupobject);
-                foreach ($assessments as $assessment){
-                    local_obu_assess_ex_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $assessment->id);
+                $assessments = local_obu_assessment_ext_get_assessments_by_group($groupobject);
+                foreach ($assessments as $courseModule){
+                    local_obu_assessment_ext_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
                 }
             }
         }
