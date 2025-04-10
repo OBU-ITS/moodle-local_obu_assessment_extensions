@@ -59,7 +59,7 @@ class process_exceptional_circumstances_service {
         global $DB;
         foreach ($unprocessedExtensions as $unprocessedExtension) {
             $user = $DB->get_record('user', array('username' => $unprocessedExtension->student_id), 'id, username', MUST_EXIST);
-            local_obu_recalculate_due_for_assessment_with_unprocessed_extensions($trace, $user, $unprocessedExtension->assessment_id, $unprocessedExtension->extension_amount);
+            local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocessed_extensions($trace, $user, $unprocessedExtension->assessment_id, $unprocessedExtension->extension_amount);
             $DB->set_field('local_obu_assessment_ext', 'is_processed', 1, array('id' => $unprocessedExtension->id));
         }
     }

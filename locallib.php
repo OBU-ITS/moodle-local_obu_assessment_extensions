@@ -265,13 +265,13 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
         } else if ($extensionRecord->extension_amount == -1) {
             $deletion = true;
         } else {
-            local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $userAssessmentGroup);
+            local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $userAssessmentGroup);
             $additionalDays = $userServiceNeedsDays + $extensionRecord->extension_amount;
-            $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
+            $newDeadline = local_obu_assessment_ext_calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
         }
     } else {
-        local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $assessmentGroup);
-        $newDeadline = calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
+        local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $assessmentGroup);
+        $newDeadline = local_obu_assessment_ext_calc_new_deadline($trace, $deadline, $userServiceNeedsDays, $hardDeadline);
     }
     $trace->output("New Deadline is $newDeadline");
 
@@ -289,10 +289,10 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
         return;
     }
 
-    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, true, $assessmentGroup);
+    local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, true, $assessmentGroup);
 }
 
-function calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $additionalDays, $hardDeadline) {
+function local_obu_assessment_ext_calc_new_deadline(\progress_trace $trace, $deadlineTimestamp, $additionalDays, $hardDeadline) {
     // Convert deadline timestamp into DateTime object
     $deadlineDate = (new DateTime())->setTimestamp($deadlineTimestamp);
     $trace->output('Current Deadline: ' . $deadlineDate->format('d/m/Y H:i'));
@@ -387,9 +387,9 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     } else if ($extensionAmount == -1) {
         $deletion = true;
     } else {
-        local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, true, true, $assessmentGroup);
+        local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, null, false, true, true, $assessmentGroup);
         $additionalDays = $userServiceNeedsDays + $extensionAmount;
-        $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
+        $newDeadline = local_obu_assessment_ext_calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
     $trace->output("New Deadline is $newDeadline");
 
@@ -407,7 +407,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
         return;
     }
 
-    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, false, $userAssessmentGroup);
+    local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, false, $userAssessmentGroup);
 }
 
 // Find the first common assessment group between two arrays of assessment groups

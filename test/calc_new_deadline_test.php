@@ -24,6 +24,6 @@ $extensionDays = required_param('extension-days', PARAM_INT);
 $hardDeadline = optional_param('marking-deadline', 0, PARAM_INT); // string representation of Oracle date
 
 $trace = new \html_progress_trace();
-$newDeadline = calc_new_deadline($trace, $deadline, $extensionDays, $hardDeadline);
+$newDeadline = local_obu_assessment_ext_calc_new_deadline($trace, $deadline, $extensionDays, $hardDeadline);
 $trace->output("New deadline: $newDeadline");
 $trace->finished();
