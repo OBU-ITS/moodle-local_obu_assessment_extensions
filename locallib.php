@@ -470,9 +470,9 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
         return;
     }
 
-    $trace->output('Assessment Group IDNumber: ' . json_encode($userAssessmentGroup->idnumber));
+    $trace->output('Assessment Group IDNumber: ' . $userAssessmentGroup['idnumber']);
 
-    $assessmentTypeCode = substr($userAssessmentGroup->idnumber, -2);
+    $assessmentTypeCode = substr($userAssessmentGroup['idnumber'], -2);
     if (!empty($assessmentTypeCode)) {
         if ($assessmentTypeCode === 'OE') {
             $assessmentType = 'original';
