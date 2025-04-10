@@ -195,23 +195,44 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
     global $DB;
 
     // GET course module record
-    $coursemodule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance, course', MUST_EXIST);
-
+    $coursemodule = local_obu_assessment_ext_fetch_course_module($courseModuleId);
+    // GET course record
+    $course = local_obu_assessment_ext_fetch_course_details($coursemodule->course);
     // Get the coursework record to retrieve the deadline
-    $courseworkRecord = $DB->get_record('coursework', ['id' => $coursemodule->instance], 'deadline', MUST_EXIST);
+    $courseworkRecord = local_obu_assessment_ext_fetch_coursework($coursemodule->instance);
     $deadline = $courseworkRecord->deadline;
+    // Get the group in which this user is enrolled
+    $userAssessmentGroup = local_obu_assessment_ext_get_user_assessment_group($user, $courseModuleId, $trace);
 
-    $customFields = local_obu_assessment_ext_fetch_banner_cutoff_dates($coursemodule->course, $deadline);
-    $trace->output('Custom fields: ' . json_encode($customFields));
+    $trace->output('Assessment Group IDNumber: ' . json_encode($userAssessmentGroup->idnumber));
 
-    $pattern = '/"group","id":(\d+)/';
-    preg_match_all($pattern, $coursemodule->availability, $matches);
-    $groupid = $matches[1];
-    $trace->output('Extracted Group ID: ' . json_encode($groupid));
-    $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
-    $trace->output('Assessment Group IDNumber: ' . json_encode($assessmentGroup->idnumber));
+    $assessmentTypeCode = substr($userAssessmentGroup->idnumber, -2);
+    if (!empty($assessmentTypeCode)) {
+        if ($assessmentTypeCode === 'OE') {
+            $assessmentType = 'original';
+        } else if ($assessmentTypeCode === 'RE') {
+            $assessmentType = 'resit';
+        } else if ($assessmentTypeCode === 'UR') {
+            $assessmentType = 'resit';
+        }
+        $hardDeadline = local_obu_assessment_ext_calculate_harddeadline($assessmentType, $course->score_cutoff_date, $course->reas_score_cutoff_date);
+    }
+    if (empty($hardDeadline)) {
+        $trace->output('Hard Deadline not set, using default');
 
-    $hardDeadline = local_obu_assessment_ext_calculate_harddeadline($assessmentGroup->idnumber, $customFields->ssbsect_score_cutoff_date, $customFields->ssbsect_reas_score_ctof_date);
+        if (isset($deadline)) {
+            // Create a DateTime object from the $deadline UNIX timestamp
+            $date = (new \DateTime())->setTimestamp($deadline);
+
+            // Add 35 days
+            $date->add(new \DateInterval('P35D'));
+
+            // Format the date as DD-MMM-YY (e.g., 10-APR-25)
+            $hardDeadline = strtoupper($date->format('d-M-y'));
+        } else {
+            $hardDeadline = '31-DEC-99'; // Fallback if $deadline is not set
+        }
+    }
     $trace->output("Hard Deadline: $hardDeadline");
 
     $sql = "SELECT uid.data
@@ -244,7 +265,7 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
         } else if ($extensionRecord->extension_amount == -1) {
             $deletion = true;
         } else {
-            local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $assessmentGroup);
+            local_obu_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true, $userAssessmentGroup);
             $additionalDays = $userServiceNeedsDays + $extensionRecord->extension_amount;
             $newDeadline = calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
         }
@@ -311,53 +332,46 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
     global $DB;
 
     // GET course module record
-    $courseModule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'instance, course', MUST_EXIST);
-
+    $coursemodule = local_obu_assessment_ext_fetch_course_module($courseModuleId);
+    // GET course record
+    $course = local_obu_assessment_ext_fetch_course_details($coursemodule->course);
     // Get the coursework record to retrieve the deadline
-    $courseworkRecord = $DB->get_record('coursework', ['id' => $courseModule->instance], 'deadline', MUST_EXIST);
+    $courseworkRecord = local_obu_assessment_ext_fetch_coursework($coursemodule->instance);
+    $deadline = $courseworkRecord->deadline;
+    // Get the group in which this user is enrolled
+    $userAssessmentGroup = local_obu_assessment_ext_get_user_assessment_group($user, $courseModuleId, $trace);
 
-    // Fetch custom field values from mdl_customfield_data
-    $sql = "SELECT cfd.value, cff.shortname
-            FROM {customfield_data} cfd
-            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
-            WHERE cfd.instanceid = :instanceid
-            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
+    $trace->output('Assessment Group IDNumber: ' . json_encode($userAssessmentGroup->idnumber));
 
-    $customFields = $DB->get_records_sql($sql, ['instanceid' => $courseModule->course]);
-    $trace ->output("Custom fields: " . json_encode($customFields));
+    $assessmentTypeCode = substr($userAssessmentGroup->idnumber, -2);
+    if (!empty($assessmentTypeCode)) {
+        if ($assessmentTypeCode === 'OE') {
+            $assessmentType = 'original';
+        } else if ($assessmentTypeCode === 'RE') {
+            $assessmentType = 'resit';
+        } else if ($assessmentTypeCode === 'UR') {
+            $assessmentType = 'resit';
+        }
+        $hardDeadline = local_obu_assessment_ext_calculate_harddeadline($assessmentType, $course->score_cutoff_date,
+            $course->reas_score_cutoff_date);
+    }
+    if (empty($hardDeadline)) {
+        $trace->output('Hard Deadline not set, using default');
 
-    // Calculate default date: courseworkRecord->deadline + 35 days in case the custom fields are unpopulated
-    $defaultDate = strtotime('+35 days', $courseworkRecord->deadline);
-    $defaultDateFormatted = date('d-M-y', $defaultDate);
+        if (isset($deadline)) {
+            // Create a DateTime object from the $deadline UNIX timestamp
+            $date = (new \DateTime())->setTimestamp($deadline);
 
-    // Set default values for custom fields
-    $ssbsect_score_cutoff_date = $defaultDateFormatted;
-    $ssbsect_reas_score_ctof_date = $defaultDateFormatted;
+            // Add 35 days
+            $date->add(new \DateInterval('P35D'));
 
-    $trace->output("ssbsect_score_cutoff_date: $ssbsect_score_cutoff_date");
-    $trace->output("ssbsect_reas_score_ctof_date: $ssbsect_reas_score_ctof_date");
-
-    foreach ($customFields as $field) {
-        if ($field->shortname === 'ssbsect_score_cutoff_date') {
-            $ssbsect_score_cutoff_date = $field->value;
-        } else if ($field->shortname === 'ssbsect_reas_score_ctof_date') {
-            $ssbsect_reas_score_ctof_date = $field->value;
+            // Format the date as DD-MMM-YY (e.g., 10-APR-25)
+            $hardDeadline = strtoupper($date->format('d-M-y'));
+        } else {
+            $hardDeadline = '31-DEC-99'; // Fallback if $deadline is not set
         }
     }
-
-    $pattern = '/"group","id":(\d+)/';
-    preg_match_all($pattern, $courseModule->availability, $matches);
-    $groupid = $matches[1];
-    $assessmentGroup = $DB->get_record('groups', ['id' => $groupid], 'id, idnumber', IGNORE_MISSING);
-
-    $deadline = $courseworkRecord->deadline;
-
-    // Use the retrieved custom field values to determine hard deadlines
-    if (substr($assessmentGroup->idnumber, -2) === 'OE') {
-        $hardDeadline = $ssbsect_score_cutoff_date;
-    } else {
-        $hardDeadline = $ssbsect_reas_score_ctof_date;
-    }
+    $trace->output("Hard Deadline: $hardDeadline");
 
     $sql = "SELECT uid.data
         FROM {user_info_data} uid
@@ -393,7 +407,7 @@ function local_obu_recalculate_due_for_assessment_with_unprocessed_extensions(\p
         return;
     }
 
-    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, false, $assessmentGroup);
+    local_obu_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, false, $userAssessmentGroup);
 }
 
 // Find the first common assessment group between two arrays of assessment groups
