@@ -90,6 +90,31 @@ function local_obu_assessment_ext_fetch_coursework($instanceId): stdClass {
     return $DB->get_record('coursework', ['id' => $instanceId], 'id, deadline', MUST_EXIST);
 }
 
+/*
+ * Fetches the course module ID for a given coursework activity ID.
+ *
+ * @param int $courseworkactivityid The coursework activity ID.
+ * @return int|null The course module ID, or null if not found.
+ */
+function local_obu_assessment_ext_get_coursemodule_id($courseworkactivityid) {
+    global $DB;
+
+    // Query to find the course module ID for the given coursework ID
+    $sql = 'SELECT cm.id
+              FROM {course_modules} cm
+              JOIN {modules} m ON m.id = cm.module
+              WHERE cm.instance = :activityid
+                AND m.name = :modulename';
+
+    // Execute query with parameters
+    $params = [
+        'activityid' => $courseworkactivityid,
+        'modulename' => 'coursework' // Assuming 'coursework' is the name of the module
+    ];
+
+    return $DB->get_field_sql($sql, $params);
+}
+
 /**
  * Check if a group ID number matches the format for assessment groups.
  *
@@ -760,8 +785,17 @@ function local_obu_assessment_ext_submit_due_date_change(\progress_trace $trace,
     }
 }
 
-function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseModuleInstanceId) {
+function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseworkInstanceId) {
     global $DB;
+
+
+    // Convert coursework instance ID to course module ID.
+    $courseModuleId = local_obu_assessment_ext_get_coursemodule_id($courseworkInstanceId);
+
+    if (!$courseModuleId) {
+        $trace->output("No course module found for coursework instance ID: $courseworkInstanceId");
+        return;
+    }
 
     $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleInstanceId);
     // Get course information and check if idnumber exists (external system identifier).

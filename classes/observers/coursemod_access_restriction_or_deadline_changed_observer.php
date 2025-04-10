@@ -33,14 +33,14 @@ require_once($CFG->dirroot . '/local/obu_assessment_extensions/locallib.php');
 
 class coursemod_access_restriction_or_deadline_changed_observer {
     public static function coursemod_access_restriction_or_deadline_changed(\mod_coursework\event\coursework_settings_updated $event) {
-        $courseModuleInstanceId = $event->objectid;
+        $courseworkInstanceId = $event->objectid;
         $eventDescription = $event->get_description();
 
         $trace = new \null_progress_trace();
-        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $courseModuleInstanceId, $eventDescription);
+        self::coursemod_access_restriction_or_deadline_changed_internal($trace, $courseworkInstanceId, $eventDescription);
     }
 
-    public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $courseModuleInstanceId, $eventDescription){
+    public static function coursemod_access_restriction_or_deadline_changed_internal($trace, $courseworkInstanceId, $eventDescription){
         global $DB;
 
         $description = strtolower($eventDescription);
@@ -50,6 +50,6 @@ class coursemod_access_restriction_or_deadline_changed_observer {
             return;
         }
 
-        local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseModuleInstanceId);
+        local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseworkInstanceId);
     }
 }
