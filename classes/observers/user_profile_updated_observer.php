@@ -60,7 +60,7 @@ class user_profile_updated_observer {
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {
-                $groupAssessments = local_obu_assess_ext_get_assessments_by_group($group);
+                $groupAssessments = local_obu_assessment_ext_get_assessments_by_group($group);
                 $assessments = array_merge($assessments, $groupAssessments);
             }
 

@@ -220,53 +220,6 @@ function local_obu_assessment_ext_get_assessment_groups($context, $identifier): 
 }
 
 /**
- * Fetch users enrolled in a course with a student role via database or meta enrolment methods.
- *
- * @param int $courseid The ID of the course to fetch enrolled students for.
- *
- * @return array An array of enrolled users. Each entry contains:
- *               - 'id': The user ID.
- *               - 'username': The username of the enrolled user.
- */
-function local_obu_assess_ext_get_enrolled_students($courseid): array {
-    global $DB;
-
-    $sql = "SELECT DISTINCT u.id, u.username
-               FROM {enrol} e 
-               JOIN {user_enrolments} ue ON e.id = ue.enrolid
-               JOIN {user} u ON u.id = ue.userid
-               JOIN {role_assignments} ra ON ra.userid = ue.userid AND ra.roleid = 5
-               JOIN {context} c ON c.id = ra.contextid AND c.instanceid = e.courseid AND c.contextlevel = 50
-               WHERE e.enrol IN ('database', 'meta')
-                 AND e.courseid = ?";
-
-    return $DB->get_records_sql($sql, [$courseid]);
-}
-
-/**
- * Calculate the hard deadline for a given group, based on cutoff dates.
- *
- * This function returns the appropriate hard deadline based on the group's ID number
- * and the provided cutoff dates for Online Exams (OE) and Reassessments (RE).
- *
- * @param string $groupIdnumber The ID number of the group (used to determine deadline type).
- * @param string|null $OECutoffDate The cutoff date for Online Exams (OE), or null if not set.
- * @param string|null $RECutoffDate The cutoff date for Reassessments (RE), or null if not set.
- *
- * @return string|null The calculated hard deadline as a date string, or null if both dates are missing.
- */
-function local_obu_assess_ext_calculate_harddeadline(string $groupIdnumber, ?string $OECutoffDate, ?string $RECutoffDate): ?string {
-    // Determine the hard deadline
-    if (substr($groupIdnumber, -2) === 'OE') {
-        $hardDeadline = $OECutoffDate;
-    } else {
-        $hardDeadline = $RECutoffDate;
-    }
-
-    return $hardDeadline; // May return null if no valid dates are available
-}
-
-/**
  * Get all assessment modules that use a specific assessment group.
  *
  * This function searches through the availability strings in `course_modules`,
@@ -277,7 +230,7 @@ function local_obu_assess_ext_calculate_harddeadline(string $groupIdnumber, ?str
  *
  * @return array Matching course module records that use the given assessment group.
  */
-function local_obu_assess_ext_get_assessments_by_group($assessmentGroup): array {
+function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): array {
     global $DB;
 
     // Initial query to retrieve potential matches (filtering by "LIKE").
@@ -313,6 +266,30 @@ function local_obu_assess_ext_get_assessments_by_group($assessmentGroup): array 
 }
 
 /**
+ * Fetch users enrolled in a course with a student role via database or meta enrolment methods.
+ *
+ * @param int $courseid The ID of the course to fetch enrolled students for.
+ *
+ * @return array An array of enrolled users. Each entry contains:
+ *               - 'id': The user ID.
+ *               - 'username': The username of the enrolled user.
+ */
+function local_obu_assessment_ext_get_enrolled_students($courseid): array {
+    global $DB;
+
+    $sql = "SELECT DISTINCT u.id, u.username
+               FROM {enrol} e 
+               JOIN {user_enrolments} ue ON e.id = ue.enrolid
+               JOIN {user} u ON u.id = ue.userid
+               JOIN {role_assignments} ra ON ra.userid = ue.userid AND ra.roleid = 5
+               JOIN {context} c ON c.id = ra.contextid AND c.instanceid = e.courseid AND c.contextlevel = 50
+               WHERE e.enrol IN ('database', 'meta')
+                 AND e.courseid = ?";
+
+    return $DB->get_records_sql($sql, [$courseid]);
+}
+
+/**
  * Fetch custom date field values for a course and set default values if unset.
  *
  * @param int $courseId The ID of the course.
@@ -322,7 +299,7 @@ function local_obu_assess_ext_get_assessments_by_group($assessmentGroup): array 
  *               - 'ssbsect_score_cutoff_date'
  *               - 'ssbsect_reas_score_ctof_date'
  */
-function local_obu_assess_ext_fetch_banner_cutoff_dates($course, $dueDate) {
+function local_obu_assessment_ext_fetch_banner_cutoff_dates($course, $dueDate) {
     global $DB;
 
     // Define default date as 35 days after baseline deadline
@@ -353,4 +330,30 @@ function local_obu_assess_ext_fetch_banner_cutoff_dates($course, $dueDate) {
 
     return $customFieldValues;
 }
+
+/**
+ * Calculate the hard deadline for a given group, based on cutoff dates.
+ *
+ * This function returns the appropriate hard deadline based on the group's ID number
+ * and the provided cutoff dates for Online Exams (OE) and Reassessments (RE).
+ *
+ * @param string $groupIdnumber The ID number of the group (used to determine deadline type).
+ * @param string|null $OECutoffDate The cutoff date for Online Exams (OE), or null if not set.
+ * @param string|null $RECutoffDate The cutoff date for Reassessments (RE), or null if not set.
+ *
+ * @return string|null The calculated hard deadline as a date string, or null if both dates are missing.
+ */
+function local_obu_assessment_ext_calculate_harddeadline(string $groupIdnumber, ?string $OECutoffDate, ?string $RECutoffDate): ?string {
+    // Determine the hard deadline
+    if (substr($groupIdnumber, -2) === 'OE') {
+        $hardDeadline = $OECutoffDate;
+    } else {
+        $hardDeadline = $RECutoffDate;
+    }
+
+    return $hardDeadline; // May return null if no valid dates are available
+}
+
+
+
 

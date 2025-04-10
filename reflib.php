@@ -39,7 +39,7 @@ $newRestrictions = $courseModule->availability;
 $trace->output("Availability: $newRestrictions");
 
 $courseContext = \context_course::instance($courseModule->course);
-$users = local_obu_assess_ext_get_enrolled_students($courseModule->course);
+$users = local_obu_assessment_ext_get_enrolled_students($courseModule->course);
 $trace->output('Users on Course: ' . count($users));
 
 $modinfo = get_fast_modinfo($courseModule->course);
