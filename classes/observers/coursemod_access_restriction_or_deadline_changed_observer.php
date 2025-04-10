@@ -50,6 +50,6 @@ class coursemod_access_restriction_or_deadline_changed_observer {
             return;
         }
 
-        local_obu_assess_ex_create_task_for_course_mod_change($trace, $courseModuleInstanceId);
+        local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseModuleInstanceId);
     }
 }

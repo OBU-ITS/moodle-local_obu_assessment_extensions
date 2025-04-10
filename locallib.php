@@ -759,3 +759,62 @@ function local_obu_assessment_ext_submit_due_date_change(\progress_trace $trace,
         throw new \moodle_exception('Error storing module extensions queue');
     }
 }
+
+function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseModuleInstanceId) {
+    global $DB;
+
+    $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleInstanceId);
+    // Get course information and check if idnumber exists (external system identifier).
+    $course = local_obu_assessment_ext_fetch_course_details($courseModule->course);
+    if (!$course->idnumber) {
+        return; // Exit if there's no idnumber.
+    }
+
+    if (!$courseModule) {
+        $trace->output("No course module found for instance ID: $courseModuleInstanceId");
+        return;
+    }
+
+    $newRestrictions = $courseModule->availability;
+    $trace->output("Availability: $newRestrictions");
+
+    $courseContext = \context_course::instance($courseModule->course);
+    $users = local_obu_assessment_ext_get_enrolled_students($courseModule->course);
+    $trace->output('Users on Course: ' . count($users));
+
+    $modinfo = get_fast_modinfo($courseModule->course);
+    $courseModuleUsers = [];
+
+    try {
+        $cm_info = $modinfo->get_cm($courseModule->id);
+        $info = new \core_availability\info_module($cm_info);
+        $courseModuleUsers = $info->filter_user_list($users);
+    } catch (\moodle_exception $e) {
+        $trace->output('Availability API error: ' . $e->errorcode);
+        $groupIds = [];
+        preg_match_all('/"group","id":(\d+)/', $newRestrictions, $matches);
+        $groupIds = $matches[1];
+
+        foreach ($groupIds as $groupId) {
+            $groupUsers = local_obu_get_users_by_assessment_group($groupId);
+            $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
+        }
+    }
+
+    if (empty($courseModuleUsers)) {
+        $trace->output('No valid users found with permissions; task creation aborted.');
+        return;
+    }
+
+    $trace->output('Filtered Users: ' . count($courseModuleUsers));
+    $trace->output('Filtered User IDs: ' . implode(', ', array_map(function($user) {
+            return $user->id;
+        }, $courseModuleUsers)));
+
+    $task = new \local_obu_assessment_extensions\task\adhoc_process_deadline_change();
+    $task->set_custom_data(['courseModuleId' => $courseModule->id, 'courseModuleUsers' => $courseModuleUsers]);
+
+    $trace->output('Task created');
+    \core\task\manager::queue_adhoc_task($task);
+    $trace->output('Task queued');
+}

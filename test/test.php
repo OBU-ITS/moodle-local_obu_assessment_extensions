@@ -26,7 +26,7 @@ $trace = new \null_progress_trace();
 
 $courseModuleInstanceIds = $DB->get_records_sql($sql);
 foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
-    local_obu_assess_ex_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
+    local_obu_assessment_ext_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
 }
 
 
