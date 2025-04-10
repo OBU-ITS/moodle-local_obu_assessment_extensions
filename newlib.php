@@ -615,7 +615,7 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
     } else if ($extensionAmount == -1) {
         $deletion = true;
     } else {
-        local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, null, false, true, true, $assessmentGroup);
+        local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, null, false, true, true, $userAssessmentGroup);
         $additionalDays = $userServiceNeedsDays + $extensionAmount;
         $newDeadline = local_obu_assessment_ext_calc_new_deadline($trace, $deadline, $additionalDays, $hardDeadline);
     }
