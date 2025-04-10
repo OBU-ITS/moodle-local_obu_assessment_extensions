@@ -710,7 +710,8 @@ function local_obu_assessment_ext_submit_due_date_change(\progress_trace $trace,
     $deletion = null, $deleteExisting = null, $userAssessmentGroup = null) {
     global $DB;
 
-    $course = local_obu_assessment_ext_fetch_course_details($courseModuleId);
+    $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleId, 'course');
+    $course = local_obu_assessment_ext_fetch_course_details($courseModule->course);
 
     if ($temporaryExemption) {
         $conditions = [
