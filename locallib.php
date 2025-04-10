@@ -90,7 +90,7 @@ function local_obu_assessment_ext_fetch_coursework($instanceId): stdClass {
     return $DB->get_record('coursework', ['id' => $instanceId], 'id, deadline', MUST_EXIST);
 }
 
-/*
+/**
  * Fetches the course module ID for a given coursework activity ID.
  *
  * @param int $courseworkactivityid The coursework activity ID.
@@ -785,10 +785,17 @@ function local_obu_assessment_ext_submit_due_date_change(\progress_trace $trace,
     }
 }
 
+/**
+ * Create process_deadline_change Task
+ *
+ *
+ *
+ * @param \progress_trace $trace The progress trace object for logging.
+ * @param int $courseworkInstanceId The ID of the coursework row
+ *
+ * @return void
+ */
 function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $courseworkInstanceId) {
-    global $DB;
-
-
     // Convert coursework instance ID to course module ID.
     $courseModuleId = local_obu_assessment_ext_get_coursemodule_id($courseworkInstanceId);
 
@@ -798,21 +805,20 @@ function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $cou
     }
 
     $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleId);
-    // Get course information and check if idnumber exists (external system identifier).
-    $course = local_obu_assessment_ext_fetch_course_details($courseModule->course);
-    if (!$course->idnumber) {
-        return; // Exit if there's no idnumber.
+    if (!$courseModule) {
+        $trace->output("No course module found with ID: $courseModuleId");
+        return;
     }
 
-    if (!$courseModule) {
-        $trace->output("No course module found for instance ID: $courseModuleInstanceId");
+    $course = local_obu_assessment_ext_fetch_course_details($courseModule->course);
+    if (!$course->idnumber) {
+        $trace->output("Skipping course '{$course->fullname}' (id: {$course->id}) — no idnumber set.");
         return;
     }
 
     $newRestrictions = $courseModule->availability;
     $trace->output("Availability: $newRestrictions");
 
-    $courseContext = \context_course::instance($courseModule->course);
     $users = local_obu_assessment_ext_get_enrolled_students($courseModule->course);
     $trace->output('Users on Course: ' . count($users));
 
@@ -825,12 +831,11 @@ function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $cou
         $courseModuleUsers = $info->filter_user_list($users);
     } catch (\moodle_exception $e) {
         $trace->output('Availability API error: ' . $e->errorcode);
-        $groupIds = [];
         preg_match_all('/"group","id":(\d+)/', $newRestrictions, $matches);
         $groupIds = $matches[1];
 
         foreach ($groupIds as $groupId) {
-            $groupUsers = local_obu_get_users_by_assessment_group($groupId);
+            $groupUsers = local_obu_assessment_ext_get_users_by_group($groupId);
             $courseModuleUsers = array_merge($courseModuleUsers, $groupUsers);
         }
     }
@@ -851,4 +856,34 @@ function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $cou
     $trace->output('Task created');
     \core\task\manager::queue_adhoc_task($task);
     $trace->output('Task queued');
+}
+
+/**
+ * Get users by assessment user group
+ *
+ * @param $assessmentGroupId
+ * @return array of users with UserId and Username
+ */
+function local_obu_assessment_ext_get_users_by_group($assessmentGroupId): array {
+    global $DB;
+    $users = array();
+    $userIds = $DB->get_records('groups_members', array('groupid' => $assessmentGroupId), '', 'userid');
+
+    if (empty($userIds)) {
+        return $users;
+    }
+
+    $userIds = array_keys($userIds);
+
+    if (!empty($userIds)) {
+        [$inSql, $params] = $DB->get_in_or_equal($userIds, SQL_PARAMS_QM, '', true);
+
+        $sql = "SELECT id, username
+            FROM {user}
+            WHERE id $inSql";
+
+        $users = $DB->get_records_sql($sql, $params);
+    }
+
+    return $users;
 }

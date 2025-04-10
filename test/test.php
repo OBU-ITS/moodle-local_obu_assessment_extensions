@@ -18,15 +18,15 @@ if (!is_siteadmin()) {
     die(); // Ensure the script stops execution after redirect
 }
 
-$sql = "SELECT cm.instance
-            FROM {course_modules} cm
-            JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'";
-
-$trace = new \null_progress_trace();
-
-$courseModuleInstanceIds = $DB->get_records_sql($sql);
-foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
-    local_obu_assessment_ext_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
-}
+//$sql = "SELECT cm.instance
+//            FROM {course_modules} cm
+//            JOIN {modules} m ON cm.module = m.id AND m.name = 'coursework'";
+//
+//$trace = new \null_progress_trace();
+//
+//$courseModuleInstanceIds = $DB->get_records_sql($sql);
+//foreach($courseModuleInstanceIds as $courseModuleInstanceId) {
+//    local_obu_assessment_ext_create_task_for_course_mod_change($trace, (int) $courseModuleInstanceId->instance);
+//}
 
 
