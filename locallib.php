@@ -594,9 +594,9 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
         return;
     }
 
-    $trace->output('Assessment Group IDNumber: ' . json_encode($userAssessmentGroup->idnumber));
+    $trace->output('Assessment Group IDNumber: ' . $userAssessmentGroup['idnumber']);
 
-    $assessmentTypeCode = substr($userAssessmentGroup->idnumber, -2);
+    $assessmentTypeCode = substr($userAssessmentGroup['idnumber'], -2);
     if (!empty($assessmentTypeCode)) {
         if ($assessmentTypeCode === 'OE') {
             $assessmentType = 'original';
@@ -765,7 +765,7 @@ function local_obu_assessment_ext_submit_due_date_change(\progress_trace $trace,
     $dueDateChange = new stdClass();
     $dueDateChange->user = $user->username;
     $dueDateChange->course = $course->idnumber;
-    $dueDateChange->assessment = $userAssessmentGroup->name;
+    $dueDateChange->assessment = $userAssessmentGroup['name'];
     $dueDateChange->date = $date;
     $dueDateChange->timelimit = null;
     $dueDateChange->type = $type;
