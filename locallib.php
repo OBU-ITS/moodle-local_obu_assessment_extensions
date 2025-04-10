@@ -797,7 +797,7 @@ function local_obu_assessment_ext_create_task_for_course_mod_change($trace, $cou
         return;
     }
 
-    $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleInstanceId);
+    $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleId);
     // Get course information and check if idnumber exists (external system identifier).
     $course = local_obu_assessment_ext_fetch_course_details($courseModule->course);
     if (!$course->idnumber) {
