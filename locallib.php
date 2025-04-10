@@ -556,7 +556,7 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
         return;
     }
 
-    local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, true,
+    local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, $temporaryExemption, $deletion, false,
         $userAssessmentGroup);
 }
 
