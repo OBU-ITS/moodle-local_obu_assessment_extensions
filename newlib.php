@@ -89,6 +89,62 @@ function local_obu_assessment_ext_is_assessment_group_idnumber($idnumber): bool 
 }
 
 /**
+ * Extract and validate group conditions from the first block of availability JSON.
+ *
+ * This function handles cases where the top-level operator may be "AND" ("&") or "OR" ("|").
+ * It retrieves group IDs from the first matching "OR" block of conditions regardless of
+ * root operator, validating IDs against their ID numbers to ensure they are assessment groups.
+ *
+ * @param string|null $availabilityJson The availability JSON string.
+ *
+ * @return array Array of validated assessment group IDs, or an empty array if none found.
+ */
+function local_obu_assessment_ext_extract_group_conditions(?string $availabilityJson): array {
+    global $DB;
+
+    // Decode JSON string into an associative array.
+    $availabilityData = json_decode($availabilityJson, true);
+
+    // Prepare an array to store valid assessment group IDs.
+    $validGroupIds = [];
+
+    // Ensure the root level contains an operator ('op') with conditions ('c').
+    if (isset($availabilityData['op']) && !empty($availabilityData['c'])) {
+        // Check if the top-level operator is valid ("&" or "|").
+        $isAnd = ($availabilityData['op'] === '&');
+        $isOr = ($availabilityData['op'] === '|');
+
+        if ($isAnd || $isOr) {
+            // Traverse the top-level conditions.
+            foreach ($availabilityData['c'] as $block) {
+                // Process the **first** OR block containing group conditions.
+                if (isset($block['op']) && $block['op'] === '|' && !empty($block['c'])) {
+                    foreach ($block['c'] as $condition) {
+                        // Check if it’s a group condition.
+                        if (isset($condition['type']) && $condition['type'] === 'group' && !empty($condition['id'])) {
+                            $groupId = $condition['id'];
+
+                            // Fetch the group ID number from the database.
+                            $idnumber = $DB->get_field('groups', 'idnumber', ['id' => $groupId]);
+
+                            // Validate the ID number to check if it's an assessment group.
+                            if ($idnumber !== false && local_obu_assessment_ext_is_assessment_group_idnumber($idnumber)) {
+                                $validGroupIds[] = $groupId;
+                            }
+                        }
+                    }
+                    // Stop processing after this first relevant OR block.
+                    break;
+                }
+            }
+        }
+    }
+
+    // Return the list of unique valid assessment group IDs.
+    return array_unique($validGroupIds);
+}
+
+/**
  * Fetch assessment groups associated with either a course module or a user.
  *
  * @param string $context The context for the fetch ('by_assessment' or 'by_user').
@@ -109,30 +165,28 @@ function local_obu_assessment_ext_get_assessment_groups($context, $identifier): 
         $courseModuleId = $identifier;
 
         // Fetch the course module data
-        $courseModule = $DB->get_record('course_modules', ['id' => $courseModuleId], 'id, availability');
+        $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleId, $fields = 'id, availability');
         if (empty($courseModule->availability)) {
             return $assessmentGroups;
         }
 
-        $availability = json_decode($courseModule->availability, true);
+        // Use helper to extract group IDs from the availability JSON
+        $groupIds = local_obu_assessment_ext_extract_group_conditions($courseModule->availability);
 
-        // Extract groups from availability JSON
-        if (!empty($availability['c'])) {
-            foreach ($availability['c'] as $condition) {
-                if ($condition['type'] === 'group' && !empty($condition['id'])) {
-                    $group = $DB->get_record('groups', ['id' => $condition['id']], 'id, idnumber, name', IGNORE_MISSING);
+        // Fetch group details and filter assessment groups
+        foreach ($groupIds as $groupId) {
+            $group = $DB->get_record('groups', ['id' => $groupId], 'id, idnumber, name', IGNORE_MISSING);
 
-                    if ($group && local_obu_assessment_ext_is_assessment_group_idnumber($group->idnumber)) {
-                        $assessmentGroups[] = [
-                            'id' => $group->id,
-                            'idnumber' => $group->idnumber,
-                            'name' => $group->name,
-                        ];
-                    }
-                }
+            if ($group && local_obu_assessment_ext_is_assessment_group_idnumber($group->idnumber)) {
+                $assessmentGroups[] = [
+                    'id' => $group->id,
+                    'idnumber' => $group->idnumber,
+                    'name' => $group->name,
+                ];
             }
         }
-    } elseif ($context === 'by_user') {
+    }
+    elseif ($context === 'by_user') {
         // Fetch groups by user ID number
         $userIdNumber = $identifier;
 
@@ -210,5 +264,93 @@ function local_obu_assess_ext_calculate_harddeadline(string $groupIdnumber, ?str
     }
 
     return $hardDeadline; // May return null if no valid dates are available
+}
+
+/**
+ * Get all assessment modules that use a specific assessment group.
+ *
+ * This function searches through the availability strings in `course_modules`,
+ * ensuring the given assessment group's ID is present in the first "OR" block
+ * of valid group conditions.
+ *
+ * @param stdClass $assessmentGroup The assessment group whose ID to search for.
+ *
+ * @return array Matching course module records that use the given assessment group.
+ */
+function local_obu_assess_ext_get_assessments_by_group($assessmentGroup): array {
+    global $DB;
+
+    // Initial query to retrieve potential matches (filtering by "LIKE").
+    $sql = "
+        SELECT cm.id, cm.availability
+        FROM {course_modules} cm
+        JOIN {modules} m ON cm.module = m.id
+        JOIN {course} c ON c.id = cm.course AND c.idnumber <> '' AND c.idnumber IS NOT NULL
+        WHERE cm.availability LIKE :groupid
+        AND m.name = :modulename
+    ";
+    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'coursework'];
+
+    // Fetch initial candidate course modules.
+    $potentialMatches = $DB->get_records_sql($sql, $params);
+
+    // Prepare the list of valid course modules.
+    $validModules = [];
+
+    // Parse and validate the availability conditions for each match.
+    foreach ($potentialMatches as $cm) {
+        // Decode the availability JSON string.
+        $availabilityJson = $cm->availability;
+        $availabilityConditions = local_obu_assessment_ext_extract_group_conditions($availabilityJson);
+
+        // Check if the given assessment group ID is present in the valid conditions.
+        if (in_array($assessmentGroup->id, $availabilityConditions)) {
+            $validModules[] = $cm; // Add to the list of valid modules.
+        }
+    }
+
+    return $validModules;
+}
+
+/**
+ * Fetch custom date field values for a course and set default values if unset.
+ *
+ * @param int $courseId The ID of the course.
+ * @param int $defaultDeadline The default deadline (used for fallback dates).
+ *
+ * @return array An associative array of custom field values with keys:
+ *               - 'ssbsect_score_cutoff_date'
+ *               - 'ssbsect_reas_score_ctof_date'
+ */
+function local_obu_assess_ext_fetch_banner_cutoff_dates($course, $dueDate) {
+    global $DB;
+
+    // Define default date as 35 days after baseline deadline
+    $defaultDate = strtotime('+35 days', $dueDate);
+    $defaultDateFormatted = date('d-M-y', $defaultDate);
+
+    // Default field values
+    $customFieldValues = [
+        'ssbsect_score_cutoff_date' => $defaultDateFormatted,
+        'ssbsect_reas_score_ctof_date' => $defaultDateFormatted,
+    ];
+
+    // SQL query to fetch custom field values
+    $sql = "SELECT cfd.value, cff.shortname
+            FROM {customfield_data} cfd
+            JOIN {customfield_field} cff ON cfd.fieldid = cff.id
+            WHERE cfd.instanceid = :instanceid
+            AND cff.shortname IN ('ssbsect_score_cutoff_date', 'ssbsect_reas_score_ctof_date')";
+
+    $result = $DB->get_records_sql($sql, ['instanceid' => $course]);
+    foreach ($result as $field) {
+        if ($field->shortname === 'ssbsect_score_cutoff_date') {
+            $customFieldValues['ssbsect_score_cutoff_date'] = $field->value;
+        } elseif ($field->shortname === 'ssbsect_reas_score_ctof_date') {
+            $customFieldValues['ssbsect_reas_score_ctof_date'] = $field->value;
+        }
+    }
+
+    return $customFieldValues;
 }
 

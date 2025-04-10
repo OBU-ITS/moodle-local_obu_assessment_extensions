@@ -27,9 +27,9 @@ global $CFG;
 require_once($CFG->dirroot.'/local/obu_assessment_extensions/locallib.php');
 
 function local_obu_assess_ex_recalculate_due_dates_for_user($user, $group) {
-    $courseModules = local_obu_get_assessments_by_assessment_group($group);
+    $courseModules = local_obu_assess_ext_get_assessments_by_group($group);
     $trace = new \null_progress_trace();
     foreach ($courseModules as $courseModule) {
-        local_obu_recalculate_due_for_assessment($trace, $user, $courseModule->id);
+        local_obu_assessment_ext_recalculate_due_for_assessment($trace, $user, $courseModule->id);
     }
 }

@@ -55,12 +55,12 @@ class user_profile_updated_observer {
 
         if ($userFields && strpos($userFields->data, '*') === 0) {
             $user = \core_user::get_user($userId,'id, username');
-            $assessmentGroups = local_obu_get_assessment_groups_by_user($user->username);
+            $assessmentGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
 
             $assessments = array();
 
             foreach ($assessmentGroups as $group) {
-                $groupAssessments = local_obu_get_assessments_by_assessment_group($group);
+                $groupAssessments = local_obu_assess_ext_get_assessments_by_group($group);
                 $assessments = array_merge($assessments, $groupAssessments);
             }
 

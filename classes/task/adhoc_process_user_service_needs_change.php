@@ -39,7 +39,7 @@ class adhoc_process_user_service_needs_change extends \core\task\adhoc_task {
 
         $trace = new \text_progress_trace();
         foreach ($assessments as $courseModule) {
-            local_obu_recalculate_due_for_assessment($trace, $user, $courseModule->id);
+            local_obu_assessment_ext_recalculate_due_for_assessment($trace, $user, $courseModule->id);
         }
         $trace->finished();
     }

@@ -40,7 +40,7 @@ class adhoc_process_deadline_change extends \core\task\adhoc_task {
 
         $trace = new \text_progress_trace();
         foreach ($courseModuleUsers as $user) {
-            local_obu_recalculate_due_for_assessment($trace, $user, $courseModuleId);
+            local_obu_assessment_ext_recalculate_due_for_assessment($trace, $user, $courseModuleId);
         }
         $trace->finished();
     }
