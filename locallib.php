@@ -633,7 +633,8 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeksRecord = $DB->get_record_sql($sql, ['userid' => $user->id]);
-    $userServiceNeedsDays = $userExtensionWeeksRecord->data * 7;
+    $userExtensionWeeks = isset($userExtensionWeeksRecord->data) ? (int) $userExtensionWeeksRecord->data : 0;
+    $userServiceNeedsDays = $userExtensionWeeks * 7;
 
     if ($extensionAmount == 0) {
         $temporaryExemption = true;
