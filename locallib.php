@@ -712,53 +712,50 @@ function local_obu_assessment_ext_submit_due_date_change(\progress_trace $trace,
     $courseModule = local_obu_assessment_ext_fetch_course_module($courseModuleId, 'course');
     $course = local_obu_assessment_ext_fetch_course_details($courseModule->course);
 
-    if ($temporaryExemption) {
-        $conditions = [
-            'student_id' => $user->username,
-            'assessment_id' => $courseModuleId,
-            'extension_amount' => 0
-        ];
-        $existingExtension = $DB->get_record_select(
+    $conditions = [
+        'student_id' => $user->username,
+        'assessment_id' => $courseModuleId,
+    ];
+
+    $select = $temporaryExemption
+        ? 'student_id = :student_id AND assessment_id = :assessment_id AND extension_amount = 0'
+        : 'student_id = :student_id AND assessment_id = :assessment_id AND extension_amount NOT IN (0, -1)';
+
+    try {
+        $existingExtension = $DB->record_exists_select(
             'local_obu_assessment_ext',
-            'student_id = :student_id AND assessment_id = :assessment_id AND extension_amount = :extension_amount',
+            $select,
             $conditions
         );
-    } else {
-        $conditions = [
-            'student_id' => $user->username,
-            'assessment_id' => $courseModuleId,
-        ];
-        $existingExtension = $DB->get_record_select(
-            'local_obu_assessment_ext',
-            'student_id = :student_id AND assessment_id = :assessment_id AND extension_amount != 0 AND extension_amount != -1',
-            $conditions
-        );
+    } catch (dml_exception $e) {
+        debugging('Error checking assessment extension existence: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        $existingExtension = false;
     }
 
-    if ($temporaryExemption) {
-        $date = 'temporary';
-        $type = 'coursework_temporary_exemption';
-        if ($existingExtension) {
-            $action = 'update';
-        } else {
-            $action = 'insert';
-        }
-    } else if ($deletion) {
-        $date = null;
-        $type = 'coursework_temporary_exemption';
-        $action = 'delete';
-    } else if ($deleteExisting) {
-        $date = null;
-        $type = 'coursework_mitigations';
-        $action = 'delete';
-    } else {
-        $date = $newDeadline;
-        $type = 'coursework_mitigations';
-        if ($existingExtension) {
-            $action = 'update';
-        } else {
-            $action = 'insert';
-        }
+    switch (true) {
+        case $temporaryExemption:
+            $date = 'temporary';
+            $type = 'coursework_temporary_exemption';
+            $action = $existingExtension ? 'update' : 'insert';
+            break;
+
+        case $deletion:
+            $date = null;
+            $type = 'coursework_temporary_exemption';
+            $action = 'delete';
+            break;
+
+        case $deleteExisting:
+            $date = null;
+            $type = 'coursework_mitigations';
+            $action = 'delete';
+            break;
+
+        default:
+            $date = $newDeadline;
+            $type = 'coursework_mitigations';
+            $action = $existingExtension ? 'update' : 'insert';
+            break;
     }
 
     $dueDateChange = new stdClass();
