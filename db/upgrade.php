@@ -91,7 +91,7 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         // Step 1: Find all duplicate records
         $duplicatesql = "
             SELECT student_id, assessment_id, extension_amount, MIN(id) as keepid
-            FROM mdl_mdl_local_obu_assessment_ext
+            FROM mdl_local_obu_assessment_ext
             GROUP BY student_id, assessment_id, extension_amount
             HAVING COUNT(*) > 1
         ";
@@ -123,7 +123,7 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         $DB->delete_records_select('local_obu_assessment_ext', "id $insql", $inparams);
 
         // Save the upgrade point
-        upgrade_plugin_savepoint(true, 2025040300, 'local', 'obu_assessment_extensions');
+        upgrade_plugin_savepoint(true, 2025080501, 'local', 'obu_assessment_extensions');
     }
 
     return $result;
