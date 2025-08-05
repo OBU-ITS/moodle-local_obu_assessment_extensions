@@ -476,10 +476,9 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
     if (!empty($assessmentTypeCode)) {
         if ($assessmentTypeCode === 'OE') {
             $assessmentType = 'original';
-        } else if ($assessmentTypeCode === 'RE') {
-            $assessmentType = 'resit';
-        } else if ($assessmentTypeCode === 'UR') {
-            $assessmentType = 'resit';
+        } else if ($assessmentTypeCode === 'RE' || $assessmentTypeCode === 'UR') {
+            $trace->output("❌ Skipping extension processing for resits (RE/UR)");
+            return;
         }
         $hardDeadline = local_obu_assessment_ext_calculate_harddeadline($assessmentType, $course->score_cutoff_date,
             $course->reas_score_cutoff_date);
@@ -600,10 +599,9 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
     if (!empty($assessmentTypeCode)) {
         if ($assessmentTypeCode === 'OE') {
             $assessmentType = 'original';
-        } else if ($assessmentTypeCode === 'RE') {
-            $assessmentType = 'resit';
-        } else if ($assessmentTypeCode === 'UR') {
-            $assessmentType = 'resit';
+        } else if ($assessmentTypeCode === 'RE' || $assessmentTypeCode === 'UR') {
+            $trace->output("❌ Skipping extension processing for resits (RE/UR)");
+            return;
         }
         $hardDeadline = local_obu_assessment_ext_calculate_harddeadline($assessmentType, $course->score_cutoff_date,
             $course->reas_score_cutoff_date);
@@ -633,7 +631,8 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeksRecord = $DB->get_record_sql($sql, ['userid' => $user->id]);
-    $userServiceNeedsDays = $userExtensionWeeksRecord->data * 7;
+    $userExtensionWeeks = isset($userExtensionWeeksRecord->data) ? (int) $userExtensionWeeksRecord->data : 0;
+    $userServiceNeedsDays = $userExtensionWeeks * 7;
 
     if ($extensionAmount == 0) {
         $temporaryExemption = true;
