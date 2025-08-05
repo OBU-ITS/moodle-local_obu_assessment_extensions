@@ -85,5 +85,46 @@ function xmldb_local_obu_assessment_extensions_upgrade($oldversion = 0) {
         upgrade_plugin_savepoint(true, 2025040300, 'local', 'obu_assessment_extensions');
     }
 
+    if ($oldversion < 2025080501) {
+        global $DB;
+
+        // Step 1: Find all duplicate records
+        $duplicatesql = "
+            SELECT student_id, assessment_id, extension_amount, MIN(id) as keepid
+            FROM mdl_mdl_local_obu_assessment_ext
+            GROUP BY student_id, assessment_id, extension_amount
+            HAVING COUNT(*) > 1
+        ";
+        $records_to_keep = $DB->get_records_sql($duplicatesql);
+
+        // Collect all IDs to keep
+        $keepids = array_map(function($r) {
+            return $r->keepid;
+        }, $records_to_keep);
+
+        // Step 2: Get all duplicate IDs (those that match the same student_id, assessment_id, extension_amount)
+        $allsql = "
+            SELECT id
+            FROM mdl_local_obu_assessment_ext
+            WHERE (student_id, assessment_id, extension_amount) IN (
+                SELECT student_id, assessment_id, extension_amount
+                FROM mdl_local_obu_assessment_ext
+                GROUP BY student_id, assessment_id, extension_amount
+                HAVING COUNT(*) > 1
+            )
+        ";
+        $allids = $DB->get_fieldset_sql($allsql);
+
+        // Step 3: Determine which IDs to delete
+        $todelete = array_diff($allids, $keepids);
+
+        // Step 4: Delete them
+        list($insql, $inparams) = $DB->get_in_or_equal($todelete);
+        $DB->delete_records_select('local_obu_assessment_ext', "id $insql", $inparams);
+
+        // Save the upgrade point
+        upgrade_plugin_savepoint(true, 2025040300, 'local', 'obu_assessment_extensions');
+    }
+
     return $result;
 }
