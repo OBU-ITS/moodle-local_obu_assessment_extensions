@@ -422,8 +422,6 @@ function local_obu_assessment_ext_calc_new_deadline(\progress_trace $trace, $dea
 
     $hardDeadlineDate = DateTime::createFromFormat('d-M-y H:i', $hardDeadline . ' 00:00');
     // Subtract 7 days from the hard deadline
-    $hardDeadlineDate->modify('-7 days');
-    $trace->output('Hard Deadline (after 7 day reduction): ' . $hardDeadlineDate->format('d/m/Y H:i'));
 
     if (!$hardDeadlineDate) {
         // If parsing fails, log an error and return the new deadline
