@@ -414,6 +414,12 @@ function local_obu_assessment_ext_calc_new_deadline(\progress_trace $trace, $dea
     $newDeadline = $newDeadlineDate->format('d/m/Y H:i');
     $trace->output("New Deadline: $newDeadline");
 
+    // Remove asterisk prefix if present
+    if (strpos($hardDeadline, '*') === 0) {
+        $hardDeadline = substr($hardDeadline, 1);
+        $trace->output("Removed asterisk from hard deadline: $hardDeadline");
+    }
+
     $hardDeadlineDate = DateTime::createFromFormat('d-M-y H:i', $hardDeadline . ' 00:00');
 
     if (!$hardDeadlineDate) {
