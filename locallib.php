@@ -414,6 +414,12 @@ function local_obu_assessment_ext_calc_new_deadline(\progress_trace $trace, $dea
     $newDeadline = $newDeadlineDate->format('d/m/Y H:i');
     $trace->output("New Deadline: $newDeadline");
 
+    // Remove asterisk prefix if present
+    if (strpos($hardDeadline, '*') === 0) {
+        $hardDeadline = substr($hardDeadline, 1);
+        $trace->output("Removed asterisk from hard deadline: $hardDeadline");
+    }
+
     $hardDeadlineDate = DateTime::createFromFormat('d-M-y H:i', $hardDeadline . ' 00:00');
 
     if (!$hardDeadlineDate) {
@@ -424,8 +430,8 @@ function local_obu_assessment_ext_calc_new_deadline(\progress_trace $trace, $dea
 
     // Set the time of the hard deadline to match the original deadline's time
     $hardDeadlineDate->setTime((int) $deadlineDate->format('H'), (int) $deadlineDate->format('i'));
-
-    $trace->output('Hard Deadline: ' . $hardDeadlineDate->format('d/m/Y H:i'));
+    $hardDeadlineDate->modify('-7 days');
+    $trace->output('Hard Deadline (after 7 day reduction): ' . $hardDeadlineDate->format('d/m/Y H:i'));
 
     // Compare new deadline with hard deadline
     if ($newDeadlineDate > $hardDeadlineDate) {
