@@ -514,7 +514,19 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeks = $DB->get_record_sql($sql, ['userid' => $user->id]);
-    $userServiceNeedsDays = $userExtensionWeeks->data * 7;
+    $userServiceNeedsDays = 0;
+
+    if ($userExtensionWeeks && isset($userExtensionWeeks->data)) {
+        $data = $userExtensionWeeks->data;
+
+        if (is_string($data) && str_starts_with($data, '*')) {
+            $data = substr($data, 1);
+        }
+
+        if (is_numeric($data)) {
+            $userServiceNeedsDays = (int)$data * 7;
+        }
+    }
 
     $sql = '
     SELECT extension_amount
@@ -637,8 +649,24 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeksRecord = $DB->get_record_sql($sql, ['userid' => $user->id]);
+<<<<<<< Updated upstream
     $userExtensionWeeks = isset($userExtensionWeeksRecord->data) ? (int) $userExtensionWeeksRecord->data : 0;
     $userServiceNeedsDays = $userExtensionWeeks * 7;
+=======
+    $userServiceNeedsDays = 0;
+
+    if ($userExtensionWeeksRecord && isset($userExtensionWeeksRecord->data)) {
+        $data = $userExtensionWeeksRecord->data;
+
+        if (is_string($data) && str_starts_with($data, '*')) {
+            $data = substr($data, 1);
+        }
+
+        if (is_numeric($data)) {
+            $userServiceNeedsDays = (int)$data * 7;
+        }
+    }
+>>>>>>> Stashed changes
 
     if ($extensionAmount == 0) {
         $temporaryExemption = true;
