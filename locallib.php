@@ -649,10 +649,6 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
         AND uif.shortname = 'extensions'";
 
     $userExtensionWeeksRecord = $DB->get_record_sql($sql, ['userid' => $user->id]);
-<<<<<<< Updated upstream
-    $userExtensionWeeks = isset($userExtensionWeeksRecord->data) ? (int) $userExtensionWeeksRecord->data : 0;
-    $userServiceNeedsDays = $userExtensionWeeks * 7;
-=======
     $userServiceNeedsDays = 0;
 
     if ($userExtensionWeeksRecord && isset($userExtensionWeeksRecord->data)) {
@@ -666,7 +662,6 @@ function local_obu_assessment_ext_recalculate_due_for_assessment_with_unprocesse
             $userServiceNeedsDays = (int)$data * 7;
         }
     }
->>>>>>> Stashed changes
 
     if ($extensionAmount == 0) {
         $temporaryExemption = true;
