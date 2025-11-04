@@ -46,25 +46,32 @@ class user_profile_updated_observer {
                     FROM {user_info_data} uid
                     JOIN {user_info_field} uif ON uid.fieldid = uif.id
                 WHERE uid.userid = :userid
-                AND uif.shortname IN ('extensions', 'exam_extension', 'exam_break')";
-        $trace->output("SQL: $sql");
+                    AND uif.shortname IN ('extensions', 'exam_extension', 'exam_break')
+                    AND uid.data LIKE :changed";
+        $params = ['userid' => $userId, 'changed' => '*%'];
 
-        $userFields = $DB->get_records_sql($sql, ['userid' => $userId]);
-        $getUserFields = function(string $key) use ($userFields) {
-            return $userFields[$key] ?? null;
+        $changedFields = $DB->get_records_sql($sql, $params);
+
+        if (empty($changedFields)) {
+            $trace->output('No unprocessed profile field changes detected. Exiting early.');
+            return;
+        }
+
+        $user = \core_user::get_user($userId, 'id, username');
+        if (!$user) {
+            $trace->output("User $userId not found; exiting.");
+            return;
+        }
+
+        $getChangedUserFields = function(string $key) use ($changedFields) {
+            return $changedFields[$key] ?? null;
         };
 
-        $extensions = $getUserFields('extensions');
-        $examExtension = $getUserFields('exam_extension');
-        $examBreak = $getUserFields('exam_break');
+        $extensions = $getChangedUserFields('extensions');
+        $examExtension = $getChangedUserFields('exam_extension');
+        $examBreak = $getChangedUserFields('exam_break');
 
-        $extensionsChanged = $extensions && is_string($extensions->data) && str_starts_with($extensions->data, '*');
-        $examExtensionChanged = $examExtension && is_string($examExtension->data) && str_starts_with($examExtension->data, '*');
-        $examBreakChanged = $examBreak && is_string($examBreak->data) && str_starts_with($examBreak->data, '*');
-
-        $user = \core_user::get_user($userId,'id, username');
-
-        if ($extensionsChanged) {
+        if ($extensions && is_string($extensions->data)) {
             $trace->output('Found unprocessed extensions for user: ' . $user->username);
 
             $assessmentGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
@@ -91,7 +98,7 @@ class user_profile_updated_observer {
             $trace->output("Complete");
         }
 
-        if ($examExtensionChanged || $examBreakChanged) {
+        if (($examExtension && is_string($examExtension->data)) || ($examBreak && is_string($examBreak->data))) {
             $trace->output('Found unprocessed exam extensions for user: ' . $user->username);
 
             $assessmentGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
@@ -108,13 +115,13 @@ class user_profile_updated_observer {
             \core\task\manager::queue_adhoc_task($task);
             $trace->output("Task created");
 
-            if ($examExtensionChanged) {
+            if ($examExtension) {
                 $DB->update_record('user_info_data', (object)[
                     'id'   => $examExtension->dataid,
                     'data' => ltrim((string)$examExtension->data, '*'),
                 ]);
             }
-            if ($examBreakChanged) {
+            if ($examBreak) {
                 $DB->update_record('user_info_data', (object)[
                     'id'   => $examBreak->dataid,
                     'data' => ltrim((string)$examBreak->data, '*'),
