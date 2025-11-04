@@ -50,7 +50,11 @@ class user_profile_updated_observer {
                     AND uid.data LIKE :changed";
         $params = ['userid' => $userId, 'changed' => '*%'];
 
-        $changedFields = $DB->get_records_sql($sql, $params);
+        $rows = $DB->get_records_sql($sql, $params);
+        $changedFields = [];
+        foreach ($rows as $row) {
+            $changedFields[$row->shortname] = $row;
+        }
 
         if (empty($changedFields)) {
             $trace->output('No unprocessed profile field changes detected. Exiting early.');
