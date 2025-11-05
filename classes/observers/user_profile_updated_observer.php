@@ -51,15 +51,19 @@ class user_profile_updated_observer {
         $params = ['userid' => $userId, 'changed' => '*%'];
 
         $rows = $DB->get_records_sql($sql, $params);
+        if (empty($rows)) {
+            $trace->output('No unprocessed profile field changes detected. Exiting early.');
+            return;
+        }
+
         $changedFields = [];
         foreach ($rows as $row) {
             $changedFields[$row->shortname] = $row;
         }
 
-        if (empty($changedFields)) {
-            $trace->output('No unprocessed profile field changes detected. Exiting early.');
-            return;
-        }
+        $extensions = $changedFields['extensions'] ?? null;
+        $examExtension = $changedFields['exam_extension'] ?? null;
+        $examBreak = $changedFields['exam_break'] ?? null;
 
         $user = \core_user::get_user($userId, 'id, username');
         if (!$user) {
@@ -67,12 +71,7 @@ class user_profile_updated_observer {
             return;
         }
 
-        $extensions = $changedFields['extensions'] ?? null;
-        $examExtension = $changedFields['exam_extension'] ?? null;
-        $examBreak = $changedFields['exam_break'] ?? null;
-
         $assessmentGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
-
         $assessments = [];
 
         if ($extensions) {

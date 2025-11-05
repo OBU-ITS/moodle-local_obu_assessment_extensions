@@ -80,12 +80,12 @@ function local_obu_assessment_ext_fetch_course_details($courseId, $fields = 'id,
 /**
  * Determine if a course module is an exam by its idnumber code (segment 3 starts with 'OA').
  */
-function local_obu_assessment_ext_is_exam(?string $courseidnumber): bool {
-    if (empty($courseidnumber)) {
+function local_obu_assessment_ext_is_exam(?string $courseModuleIdNumber): bool {
+    if (empty($courseModuleIdNumber)) {
         return false;
     }
 
-    $parts = array_map('trim', explode('|', $courseidnumber, 3));
+    $parts = array_map('trim', explode('|', $courseModuleIdNumber, 3));
     if (count($parts) < 3) {
         return false;
     }
@@ -401,15 +401,6 @@ function local_obu_assessment_ext_get_exam_assessments_by_group($assessmentGroup
     }
 
     return $validModules;
-}
-
-/**
- * Get [startTimestamp, closeTimestamp] from a coursework record (uses coursework.starttime and coursework.deadline).
- */
-function local_obu_assessment_ext_exam_window_from_coursework(stdClass $cw): array {
-    $startTimestamp = (int)($cw->starttime ?? 0);
-    $closeTimestamp = (int)($cw->deadline  ?? 0);
-    return [$startTimestamp, $closeTimestamp];
 }
 
 /**
