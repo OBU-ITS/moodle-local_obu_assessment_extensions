@@ -319,7 +319,7 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
-    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'coursework'];
+    $params = ['groupid' => '%"id":'.$assessmentGroup['id'].'%', 'modulename' => 'coursework'];
 
     // Fetch initial candidate course modules.
     $potentialMatches = $DB->get_records_sql($sql, $params);
@@ -334,7 +334,7 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
         $availabilityConditions = local_obu_assessment_ext_extract_group_conditions($availabilityJson);
 
         // Check if the given assessment group ID is present in the valid conditions.
-        if (in_array($assessmentGroup->id, $availabilityConditions)) {
+        if (in_array($assessmentGroup['id'], $availabilityConditions)) {
             $validModules[] = $cm; // Add to the list of valid modules.
         }
     }
