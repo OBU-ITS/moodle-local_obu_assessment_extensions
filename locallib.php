@@ -416,19 +416,23 @@ function local_obu_assessment_ext_exam_base_minutes(int $startTimestamp, int $cl
  * Safe to pass values with a leading '*'.
  */
 function local_obu_assessment_ext_exam_added_minutes_from_extension(int $baseMinutes, ?string $raw): int {
-    if ($baseMinutes <= 0) return 0;
-    $code = strtoupper(ltrim(trim((string)$raw), '*'));
-    if ($code === '') return 0;
+    if ($baseMinutes <= 0) {
+        return 0;
+    }
 
-    $map = [
-        'ET25' => 1.25,
-        'ET33' => 1.33,
-        'ET50' => 1.50,
-        'ET60' => 1.66,
-        'ETX2' => 2.00,
-    ];
-    $mult = $map[$code] ?? 1.0;
-    return (int)ceil($baseMinutes * max(0.0, $mult - 1.0));
+    $cleanMinutes = ltrim(trim((string)$raw), '*');
+
+    if ($cleanMinutes === '') {
+        return 0;
+    }
+
+    $mult = (float)$cleanMinutes;
+
+    if ($mult <= 1.0) {
+        return 0;
+    }
+
+    return (int)ceil($baseMinutes * ($mult - 1.0));
 }
 
 
@@ -440,25 +444,22 @@ function local_obu_assessment_ext_exam_added_minutes_from_extension(int $baseMin
  * Safe to pass values with a leading '*'.
  */
 function local_obu_assessment_ext_exam_added_minutes_from_break_effective(int $effectiveMinutes, ?string $raw): int {
-    // No break up to and including 60 minutes.
-    if ($effectiveMinutes <= 60) return 0;
+    if ($effectiveMinutes <= 60) {
+        return 0;
+    }
 
-    $code = strtoupper(ltrim(trim((string)$raw), '*'));
-    if ($code === '') return 0;
+    $cleanMinutes = ltrim(trim((string)$raw), '*');
 
-    $map = [
-        'EB5'  => 5,
-        'EB10' => 10,
-        'EB15' => 15,
-        'EB20' => 20,
-        'EB30' => 30,
-        'EB60' => 60,
-    ];
-    $minsPerHour = $map[$code] ?? 0;
-    if ($minsPerHour <= 0) return 0;
+    if ($cleanMinutes === '' || !is_numeric($cleanMinutes)) {
+        return 0;
+    }
 
-    // Started hours AFTER the first:
-    // e.g. 1h01–2h00 → 1 unit, 2h01–3h00 → 2 units, etc.
+    $minsPerHour = (int)$cleanMinutes;
+
+    if ($minsPerHour <= 0) {
+        return 0;
+    }
+
     $eligibleUnits = (int)max(ceil(($effectiveMinutes - 60) / 60), 0);
     return $eligibleUnits * $minsPerHour;
 }
