@@ -104,7 +104,7 @@ function local_obu_assessment_ext_is_exam(?string $courseModuleIdNumber): bool {
 function local_obu_assessment_ext_fetch_coursework($instanceId): stdClass {
     global $DB;
 
-    return $DB->get_record('coursework', ['id' => $instanceId], 'id, starttime, deadline', MUST_EXIST);
+    return $DB->get_record('coursework', ['id' => $instanceId], 'id, startdate, deadline', MUST_EXIST);
 }
 
 /**
@@ -595,7 +595,7 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
     if (local_obu_assessment_ext_is_exam($coursemodule->idnumber ?? null)) {
         $trace->output("Exam detected via CM idnumber: {$coursemodule->idnumber}");
 
-        $startTimestamp = (int)($courseworkRecord->starttime ?? 0);
+        $startTimestamp = (int)($courseworkRecord->startdate ?? 0);
         $closeTimestamp = (int)($courseworkRecord->deadline  ?? 0);
         $baseMinutes = local_obu_assessment_ext_exam_base_minutes($startTimestamp, $closeTimestamp);
 
