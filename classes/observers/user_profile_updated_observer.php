@@ -80,7 +80,7 @@ class user_profile_updated_observer {
             foreach ($assessmentGroups as $group) {
                 $assessments = array_merge(
                     $assessments,
-                    local_obu_assessment_ext_get_assessments_by_group($group)
+                    local_obu_assessment_ext_get_assessments_by_group($group['id'])
                 );
             }
         }
@@ -91,7 +91,7 @@ class user_profile_updated_observer {
             foreach ($assessmentGroups as $group) {
                 $assessments = array_merge(
                     $assessments,
-                    local_obu_assessment_ext_get_exam_assessments_by_group($group)
+                    local_obu_assessment_ext_get_exam_assessments_by_group($group['id'])
                 );
             }
         }

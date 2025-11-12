@@ -26,8 +26,15 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot.'/local/obu_assessment_extensions/locallib.php');
 
+/**
+ * Get all **exam** assessment modules that use a specific assessment group.
+ *
+ * @param object $user The user to calculate assessment due date for.
+ * @param object $group The group to pull assessments from.
+ *
+ */
 function local_obu_assess_ex_recalculate_due_dates_for_user($user, $group) {
-    $courseModules = local_obu_assessment_ext_get_assessments_by_group($group);
+    $courseModules = local_obu_assessment_ext_get_assessments_by_group($group->id);
     $trace = new \null_progress_trace();
     foreach ($courseModules as $courseModule) {
         local_obu_assessment_ext_recalculate_due_for_assessment($trace, $user, $courseModule->id);

@@ -68,7 +68,7 @@ class local_obu_assessment_extensions_external extends external_api {
             $assessmentgroups = local_obu_assessment_ext_get_assessment_groups('by_user',$studentidnumber);
 
             foreach ($assessmentgroups as $assessmentgroup){
-                $assessments = local_obu_assessment_ext_get_assessments_by_group($assessmentgroup);
+                $assessments = local_obu_assessment_ext_get_assessments_by_group($assessmentgroup['id']);
                 foreach ($assessments as $courseModule){
                     local_obu_assessment_ext_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
                 }
@@ -77,7 +77,7 @@ class local_obu_assessment_extensions_external extends external_api {
             $sql = "SELECT * FROM {groups} WHERE idnumber = :groupidnumber";
             $groupobjects = $DB->get_records_sql($sql, array('groupidnumber' => $groupidnumber));
             foreach ($groupobjects as $groupobject) {
-                $assessments = local_obu_assessment_ext_get_assessments_by_group($groupobject);
+                $assessments = local_obu_assessment_ext_get_assessments_by_group($groupobject['id']);
                 foreach ($assessments as $courseModule){
                     local_obu_assessment_ext_store_known_exceptional_circumstances($studentidnumber, $extensiondays, $courseModule->id);
                 }

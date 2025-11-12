@@ -317,14 +317,14 @@ function local_obu_assessment_ext_get_user_assessment_group($user, $courseModule
  * Get all assessment modules that use a specific assessment group.
  *
  * This function searches through the availability strings in `course_modules`,
- * ensuring the given assessment group's ID is present in the first "OR" block
+ * ensuring the given assessment group ID is present in the first "OR" block
  * of valid group conditions.
  *
- * @param stdClass $assessmentGroup The assessment group whose ID to search for.
+ * @param int $assessmentGroupId The assessment group ID to search for.
  *
  * @return array Matching course module records that use the given assessment group.
  */
-function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): array {
+function local_obu_assessment_ext_get_assessments_by_group($assessmentGroupId): array {
     global $DB;
 
     // Initial query to retrieve potential matches (filtering by "LIKE").
@@ -336,7 +336,7 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
-    $params = ['groupid' => '%"id":'.$assessmentGroup['id'].'%', 'modulename' => 'coursework'];
+    $params = ['groupid' => '%"id":'.$assessmentGroupId.'%', 'modulename' => 'coursework'];
 
     // Fetch initial candidate course modules.
     $potentialMatches = $DB->get_records_sql($sql, $params);
@@ -351,7 +351,7 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
         $availabilityConditions = local_obu_assessment_ext_extract_group_conditions($availabilityJson);
 
         // Check if the given assessment group ID is present in the valid conditions.
-        if (in_array($assessmentGroup['id'], $availabilityConditions)) {
+        if (in_array($assessmentGroupId, $availabilityConditions)) {
             $validModules[] = $cm; // Add to the list of valid modules.
         }
     }
@@ -363,14 +363,14 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
  * Get all **exam** assessment modules that use a specific assessment group.
  *
  * This function searches through the availability strings in `course_modules`,
- * ensuring the given assessment group's ID is present in the first "OR" block
+ * ensuring the given assessment group ID is present in the first "OR" block
  * of valid group conditions. It then filters results to include only those
  * modules whose `idnumber` identifies them as exams (third segment begins with "OA").
  *
- * @param stdClass $assessmentGroup The assessment group whose ID to search for.
+ * @param int $assessmentGroupId The assessment group ID to search for.
  * @return array Matching **exam** course module records that use the given assessment group.
  */
-function local_obu_assessment_ext_get_exam_assessments_by_group($assessmentGroup): array {
+function local_obu_assessment_ext_get_exam_assessments_by_group($assessmentGroupId): array {
     global $DB;
 
     $sql = "
@@ -382,7 +382,7 @@ function local_obu_assessment_ext_get_exam_assessments_by_group($assessmentGroup
            AND m.name = :modulename
     ";
     $params = [
-        'groupid' => '%\"id\":' . $assessmentGroup->id . '%',
+        'groupid' => '%\"id\":' . $assessmentGroupId . '%',
         'modulename' => 'coursework'
     ];
 
@@ -393,7 +393,7 @@ function local_obu_assessment_ext_get_exam_assessments_by_group($assessmentGroup
     foreach ($potentialMatches as $cm) {
         $availabilityConditions = local_obu_assessment_ext_extract_group_conditions($cm->availability);
 
-        if (in_array($assessmentGroup->id, $availabilityConditions)) {
+        if (in_array($assessmentGroupId, $availabilityConditions)) {
             if (local_obu_assessment_ext_is_exam($cm->idnumber ?? null)) {
                 $validModules[] = $cm;
             }
