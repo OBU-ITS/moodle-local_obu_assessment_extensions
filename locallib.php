@@ -104,7 +104,7 @@ function local_obu_assessment_ext_is_exam(?string $courseModuleIdNumber): bool {
 function local_obu_assessment_ext_fetch_coursework($instanceId): stdClass {
     global $DB;
 
-    return $DB->get_record('coursework', ['id' => $instanceId], 'id, deadline', MUST_EXIST);
+    return $DB->get_record('coursework', ['id' => $instanceId], 'id, starttime, deadline', MUST_EXIST);
 }
 
 /**
