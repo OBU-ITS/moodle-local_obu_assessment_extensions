@@ -415,18 +415,18 @@ function local_obu_assessment_ext_exam_base_minutes(int $startTimestamp, int $cl
  * Added minutes from ET code (ET25, ET33, ET50, ET60, ETX2).
  * Safe to pass values with a leading '*'.
  */
-function local_obu_assessment_ext_exam_added_minutes_from_extension(int $baseMinutes, ?string $raw): int {
+function local_obu_assessment_ext_exam_added_minutes_from_extension(int $baseMinutes, ?string $extensionData): int {
     if ($baseMinutes <= 0) {
         return 0;
     }
 
-    $cleanMinutes = ltrim(trim((string)$raw), '*');
+    $cleanMultiplier = ltrim(trim((string)$extensionData), '*');
 
-    if ($cleanMinutes === '') {
+    if ($cleanMultiplier === '') {
         return 0;
     }
 
-    $mult = (float)$cleanMinutes;
+    $mult = (float)$cleanMultiplier;
 
     if ($mult <= 1.0) {
         return 0;
@@ -443,14 +443,14 @@ function local_obu_assessment_ext_exam_added_minutes_from_extension(int $baseMin
  *
  * Safe to pass values with a leading '*'.
  */
-function local_obu_assessment_ext_exam_added_minutes_from_break_effective(int $effectiveMinutes, ?string $raw): int {
+function local_obu_assessment_ext_exam_added_minutes_from_break_effective(int $effectiveMinutes, ?string $exambreakData): int {
     if ($effectiveMinutes <= 60) {
         return 0;
     }
 
-    $cleanMinutes = ltrim(trim((string)$raw), '*');
+    $cleanMinutes = ltrim(trim((string)$exambreakData), '*');
 
-    if ($cleanMinutes === '' || !is_numeric($cleanMinutes)) {
+    if (!is_numeric($cleanMinutes)) {
         return 0;
     }
 
@@ -613,15 +613,15 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
            AND uif.shortname IN ('exam_extension','exam_break')",
             ['uid' => $user->id]
         );
-        $extRaw = $rows['exam_extension']->data ?? '';
-        $ebRaw  = $rows['exam_break']->data ?? '';
+        $extensionData = $rows['exam_extension']->data ?? '';
+        $exambreakData  = $rows['exam_break']->data ?? '';
 
 
-        $addExt = local_obu_assessment_ext_exam_added_minutes_from_extension($baseMinutes, $extRaw);
+        $addExt = local_obu_assessment_ext_exam_added_minutes_from_extension($baseMinutes, $extensionData);
 
 
         $effectiveMinutes = $baseMinutes + $addExt;
-        $addBreak = local_obu_assessment_ext_exam_added_minutes_from_break_effective($effectiveMinutes, $ebRaw);
+        $addBreak = local_obu_assessment_ext_exam_added_minutes_from_break_effective($effectiveMinutes, $exambreakData);
 
         $addedTotal = $addExt + $addBreak;
         if ($addedTotal <= 0) {
