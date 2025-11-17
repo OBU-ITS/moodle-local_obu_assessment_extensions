@@ -78,6 +78,23 @@ function local_obu_assessment_ext_fetch_course_details($courseId, $fields = 'id,
 }
 
 /**
+ * Determine if a course module is an exam by its idnumber code (segment 3 starts with 'OA').
+ */
+function local_obu_assessment_ext_is_exam(?string $courseModuleIdNumber): bool {
+    if (empty($courseModuleIdNumber)) {
+        return false;
+    }
+
+    $parts = array_map('trim', explode('|', $courseModuleIdNumber, 3));
+    if (count($parts) < 3) {
+        return false;
+    }
+
+    $code = $parts[2];
+    return strncasecmp($code, 'OA', 2) === 0;
+}
+
+/**
  * Fetches the coursework details for a course module.
  *
  * @param int $instanceId The instance ID of the course module.
@@ -87,7 +104,7 @@ function local_obu_assessment_ext_fetch_course_details($courseId, $fields = 'id,
 function local_obu_assessment_ext_fetch_coursework($instanceId): stdClass {
     global $DB;
 
-    return $DB->get_record('coursework', ['id' => $instanceId], 'id, deadline', MUST_EXIST);
+    return $DB->get_record('coursework', ['id' => $instanceId], 'id, startdate, deadline', MUST_EXIST);
 }
 
 /**
@@ -300,14 +317,14 @@ function local_obu_assessment_ext_get_user_assessment_group($user, $courseModule
  * Get all assessment modules that use a specific assessment group.
  *
  * This function searches through the availability strings in `course_modules`,
- * ensuring the given assessment group's ID is present in the first "OR" block
+ * ensuring the given assessment group ID is present in the first "OR" block
  * of valid group conditions.
  *
- * @param stdClass $assessmentGroup The assessment group whose ID to search for.
+ * @param int $assessmentGroupId The assessment group ID to search for.
  *
  * @return array Matching course module records that use the given assessment group.
  */
-function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): array {
+function local_obu_assessment_ext_get_assessments_by_group($assessmentGroupId): array {
     global $DB;
 
     // Initial query to retrieve potential matches (filtering by "LIKE").
@@ -319,7 +336,7 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
         WHERE cm.availability LIKE :groupid
         AND m.name = :modulename
     ";
-    $params = ['groupid' => '%"id":'.$assessmentGroup->id.'%', 'modulename' => 'coursework'];
+    $params = ['groupid' => '%"id":'.$assessmentGroupId.'%', 'modulename' => 'coursework'];
 
     // Fetch initial candidate course modules.
     $potentialMatches = $DB->get_records_sql($sql, $params);
@@ -334,12 +351,117 @@ function local_obu_assessment_ext_get_assessments_by_group($assessmentGroup): ar
         $availabilityConditions = local_obu_assessment_ext_extract_group_conditions($availabilityJson);
 
         // Check if the given assessment group ID is present in the valid conditions.
-        if (in_array($assessmentGroup->id, $availabilityConditions)) {
+        if (in_array($assessmentGroupId, $availabilityConditions)) {
             $validModules[] = $cm; // Add to the list of valid modules.
         }
     }
 
     return $validModules;
+}
+
+/**
+ * Get all **exam** assessment modules that use a specific assessment group.
+ *
+ * This function searches through the availability strings in `course_modules`,
+ * ensuring the given assessment group ID is present in the first "OR" block
+ * of valid group conditions. It then filters results to include only those
+ * modules whose `idnumber` identifies them as exams (third segment begins with "OA").
+ *
+ * @param int $assessmentGroupId The assessment group ID to search for.
+ * @return array Matching **exam** course module records that use the given assessment group.
+ */
+function local_obu_assessment_ext_get_exam_assessments_by_group($assessmentGroupId): array {
+    global $DB;
+
+    $sql = "
+        SELECT cm.id, cm.availability, cm.idnumber
+          FROM {course_modules} cm
+          JOIN {modules} m ON cm.module = m.id
+          JOIN {course} c ON c.id = cm.course AND c.idnumber <> '' AND c.idnumber IS NOT NULL
+         WHERE cm.availability LIKE :groupid
+           AND m.name = :modulename
+    ";
+    $params = [
+        'groupid' => '%\"id\":' . $assessmentGroupId . '%',
+        'modulename' => 'coursework'
+    ];
+
+    $potentialMatches = $DB->get_records_sql($sql, $params);
+
+    $validModules = [];
+
+    foreach ($potentialMatches as $cm) {
+        $availabilityConditions = local_obu_assessment_ext_extract_group_conditions($cm->availability);
+
+        if (in_array($assessmentGroupId, $availabilityConditions)) {
+            if (local_obu_assessment_ext_is_exam($cm->idnumber ?? null)) {
+                $validModules[] = $cm;
+            }
+        }
+    }
+
+    return $validModules;
+}
+
+/**
+ * Compute base exam minutes from start/close timestamps.
+ */
+function local_obu_assessment_ext_exam_base_minutes(int $startTimestamp, int $closeTimestamp): int {
+    if ($startTimestamp <= 0 || $closeTimestamp <= 0 || $closeTimestamp <= $startTimestamp) return 0;
+    return (int)ceil(($closeTimestamp - $startTimestamp) / 60);
+}
+
+/**
+ * Added minutes from ET code (ET25, ET33, ET50, ET60, ETX2).
+ * Safe to pass values with a leading '*'.
+ */
+function local_obu_assessment_ext_exam_added_minutes_from_extension(int $baseMinutes, ?string $extensionData): int {
+    if ($baseMinutes <= 0) {
+        return 0;
+    }
+
+    $cleanMultiplier = ltrim(trim((string)$extensionData), '*');
+
+    if ($cleanMultiplier === '') {
+        return 0;
+    }
+
+    $mult = (float)$cleanMultiplier;
+
+    if ($mult <= 1.0) {
+        return 0;
+    }
+
+    return (int)ceil($baseMinutes * ($mult - 1.0));
+}
+
+
+/**
+ * Added minutes from EB code (EB5, EB10, EB15, EB20, EB30, EB60),
+ * applied per STARTED hour AFTER the first, based on *effective* minutes
+ * (i.e., base + ET_added).
+ *
+ * Safe to pass values with a leading '*'.
+ */
+function local_obu_assessment_ext_exam_added_minutes_from_break_effective(int $effectiveMinutes, ?string $exambreakData): int {
+    if ($effectiveMinutes <= 60) {
+        return 0;
+    }
+
+    $cleanMinutes = ltrim(trim((string)$exambreakData), '*');
+
+    if (!is_numeric($cleanMinutes)) {
+        return 0;
+    }
+
+    $minsPerHour = (int)$cleanMinutes;
+
+    if ($minsPerHour <= 0) {
+        return 0;
+    }
+
+    $eligibleUnits = (int)max(ceil(($effectiveMinutes - 60) / 60), 0);
+    return $eligibleUnits * $minsPerHour;
 }
 
 /**
@@ -469,6 +591,61 @@ function local_obu_assessment_ext_recalculate_due_for_assessment(\progress_trace
     // Get the coursework record to retrieve the deadline
     $courseworkRecord = local_obu_assessment_ext_fetch_coursework($coursemodule->instance);
     $deadline = $courseworkRecord->deadline;
+
+    // EARLY EXAM PATH (before coursework extension logic)
+    if (local_obu_assessment_ext_is_exam($coursemodule->idnumber ?? null)) {
+        $trace->output("Exam detected via CM idnumber: {$coursemodule->idnumber}");
+
+        $startTimestamp = (int)($courseworkRecord->startdate ?? 0);
+        $closeTimestamp = (int)($courseworkRecord->deadline  ?? 0);
+        $baseMinutes = local_obu_assessment_ext_exam_base_minutes($startTimestamp, $closeTimestamp);
+
+        if ($baseMinutes <= 0 || $closeTimestamp <= 0) {
+            $trace->output('Exam: invalid start/deadline; skipping.');
+            return;
+        }
+
+        $rows = $DB->get_records_sql("
+        SELECT uif.shortname, uid.data
+          FROM {user_info_field} uif
+          JOIN {user_info_data} uid ON uid.fieldid = uif.id
+         WHERE uid.userid = :uid
+           AND uif.shortname IN ('exam_extension','exam_break')",
+            ['uid' => $user->id]
+        );
+        $extensionData = $rows['exam_extension']->data ?? '';
+        $exambreakData  = $rows['exam_break']->data ?? '';
+
+
+        $addExt = local_obu_assessment_ext_exam_added_minutes_from_extension($baseMinutes, $extensionData);
+
+
+        $effectiveMinutes = $baseMinutes + $addExt;
+        $addBreak = local_obu_assessment_ext_exam_added_minutes_from_break_effective($effectiveMinutes, $exambreakData);
+
+        $addedTotal = $addExt + $addBreak;
+        if ($addedTotal <= 0) {
+            $trace->output('Exam: no effective change from ET/EB; skipping.');
+            return;
+        }
+
+        $newCloseTimestamp  = $closeTimestamp + ($addedTotal * 60);
+        $newDeadline = (new \DateTime("@$newCloseTimestamp"))->format('d/m/Y H:i');
+
+        $userAssessmentGroup = local_obu_assessment_ext_get_user_assessment_group($user, $courseModuleId, $trace);
+        if (!$userAssessmentGroup) {
+            $trace->output('No user assessment group found; skipping exam update.');
+            return;
+        }
+
+        // Clear then set new deadline (reuse your existing queue)
+        local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, null, false, false, true,  $userAssessmentGroup);
+        local_obu_assessment_ext_submit_due_date_change($trace, $user, $courseModuleId, $newDeadline, false, false, false, $userAssessmentGroup);
+
+        $trace->output("Exam: base {$baseMinutes}m → +{$addExt}m (ET) → effective {$effectiveMinutes}m → +{$addBreak}m (EB) → new close {$newDeadline}");
+        return; // skip coursework path
+    }
+
     // Get the group in which this user is enrolled
     $userAssessmentGroup = local_obu_assessment_ext_get_user_assessment_group($user, $courseModuleId, $trace);
     if (!$userAssessmentGroup) {

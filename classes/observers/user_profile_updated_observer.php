@@ -42,40 +42,82 @@ class user_profile_updated_observer {
     public static function user_profile_updated_internal(\progress_trace $trace, $userId) {
         global $DB;
 
-        $sql = "SELECT uid.id, uid.data
-        FROM {user_info_data} uid
-        JOIN {user_info_field} uif ON uid.fieldid = uif.id
-        WHERE uid.userid = :userid
-        AND uif.shortname = 'extensions'";
+        $sql = "SELECT uif.shortname, uid.id AS dataid, uid.data
+                    FROM {user_info_data} uid
+                    JOIN {user_info_field} uif ON uid.fieldid = uif.id
+                WHERE uid.userid = :userid
+                    AND uif.shortname IN ('extensions', 'exam_extension', 'exam_break')
+                    AND uid.data LIKE :changed";
+        $params = ['userid' => $userId, 'changed' => '*%'];
 
-        $trace->output("SQL: $sql");
+        $rows = $DB->get_records_sql($sql, $params);
+        if (empty($rows)) {
+            $trace->output('No unprocessed profile field changes detected. Exiting early.');
+            return;
+        }
 
-        $userFields = $DB->get_record_sql($sql, ['userid' => $userId]);
-        $trace->output("Extensions Data: $userFields->data");
+        $changedFields = [];
+        foreach ($rows as $row) {
+            $changedFields[$row->shortname] = $row;
+        }
 
-        if ($userFields && strpos($userFields->data, '*') === 0) {
-            $user = \core_user::get_user($userId,'id, username');
-            $assessmentGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
+        $extensions = $changedFields['extensions'] ?? null;
+        $examExtension = $changedFields['exam_extension'] ?? null;
+        $examBreak = $changedFields['exam_break'] ?? null;
 
-            $assessments = array();
+        $user = \core_user::get_user($userId, 'id, username');
+        if (!$user) {
+            $trace->output("User $userId not found; exiting.");
+            return;
+        }
+
+        $assessmentGroups = local_obu_assessment_ext_get_assessment_groups('by_user', $user->username);
+        $assessments = [];
+
+        if ($extensions) {
+            $trace->output('Found unprocessed coursework extensions for user: ' . $user->username);
 
             foreach ($assessmentGroups as $group) {
-                $groupAssessments = local_obu_assessment_ext_get_assessments_by_group($group);
-                $assessments = array_merge($assessments, $groupAssessments);
+                $assessments = array_merge(
+                    $assessments,
+                    local_obu_assessment_ext_get_assessments_by_group($group['id'])
+                );
             }
-
-            $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
-            $task->set_custom_data(['assessments' => $assessments, 'user' => $user]);
-            \core\task\manager::queue_adhoc_task($task);
-            $trace->output("Task created");
-
-            $updatedIsp = ltrim($userFields->data, '*');
-            $trace->output("Updated ISP: $updatedIsp");
-            $updatedRecord = new \stdClass();
-            $updatedRecord->id = $userFields->id;
-            $updatedRecord->data = $updatedIsp;
-            $DB->update_record('user_info_data', $updatedRecord);
-            $trace->output("Complete");
         }
+
+        if ($examExtension || $examBreak) {
+            $trace->output('Found unprocessed exam extensions for user: ' . $user->username);
+
+            foreach ($assessmentGroups as $group) {
+                $assessments = array_merge(
+                    $assessments,
+                    local_obu_assessment_ext_get_exam_assessments_by_group($group['id'])
+                );
+            }
+        }
+
+        if (!empty($assessments)) {
+            $task = new \local_obu_assessment_extensions\task\adhoc_process_user_service_needs_change();
+            $task->set_custom_data([
+                'assessments' => $assessments,
+                'user'        => $user,
+            ]);
+            \core\task\manager::queue_adhoc_task($task);
+            $trace->output('Queued adhoc task for user: ' . $user->username);
+        } else {
+            $trace->output('No actionable assessments found; skipping task queue.');
+        }
+
+        foreach (['extensions' => $extensions, 'exam_extension' => $examExtension, 'exam_break' => $examBreak] as $name => $field) {
+            if ($field) {
+                $DB->update_record('user_info_data', (object)[
+                    'id'   => $field->dataid,
+                    'data' => ltrim((string)$field->data, '*'),
+                ]);
+                $trace->output("Cleared flag for {$name}.");
+            }
+        }
+
+        $trace->output('Processing complete for user: ' . $user->username);
     }
 }
